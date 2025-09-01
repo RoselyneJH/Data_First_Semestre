@@ -1,0 +1,19 @@
+2025-08-31 17:42:34.014 | INFO     | __main__:<module>:547 - DEBUT TRT
+2025-08-31 18:38:06.510 | INFO     | __main__:<module>:549 - DEBUT TRT
+2025-08-31 18:38:08.075 | INFO     | __main__:<module>:552 - RECUPERATION COMMUNE PRINCIP.
+2025-08-31 18:38:08.533 | INFO     | __main__:<module>:555 - RECUPERATION COMMUNE MODIFIEE
+2025-08-31 18:38:08.818 | INFO     | __main__:<module>:558 - RECUPERATION COMMUNE N.Caled.
+2025-08-31 18:38:19.006 | INFO     | __main__:<module>:566 - CHARGEMENT DWH 
+2025-08-31 18:38:19.006 | INFO     | __main__:<module>:568 - FIN  TRT
+2025-08-31 19:04:04.651 | INFO     | __main__:<module>:549 - DEBUT TRT
+2025-08-31 19:04:06.553 | INFO     | __main__:<module>:552 - RECUPERATION COMMUNE PRINCIP.
+2025-08-31 19:04:07.111 | INFO     | __main__:<module>:555 - RECUPERATION COMMUNE MODIFIEE
+2025-08-31 19:04:07.395 | INFO     | __main__:<module>:558 - RECUPERATION COMMUNE N.Caled.
+2025-08-31 19:04:19.078 | INFO     | __main__:<module>:566 - CHARGEMENT DWH 
+2025-08-31 19:04:19.078 | INFO     | __main__:<module>:568 - FIN  TRT
+2025-08-31 23:07:09.060 | INFO     | my_module.Extract_Load_Transform_Commune_FR:<module>:649 - DEBUT TRT
+2025-08-31 23:07:11.205 | INFO     | my_module.Extract_Load_Transform_Commune_FR:<module>:652 - RECUPERATION COMMUNE PRINCIP.
+2025-08-31 23:07:11.736 | INFO     | my_module.Extract_Load_Transform_Commune_FR:<module>:655 - RECUPERATION COMMUNE MODIFIEE
+2025-08-31 23:07:11.929 | INFO     | my_module.Extract_Load_Transform_Commune_FR:<module>:658 - RECUPERATION COMMUNE N.Caled.
+2025-08-31 23:07:22.629 | INFO     | my_module.Extract_Load_Transform_Commune_FR:<module>:666 - CHARGEMENT DWH 
+2025-08-31 23:07:22.629 | INFO     | my_module.Extract_Load_Transform_Commune_FR:<module>:668 - FIN  TRT
