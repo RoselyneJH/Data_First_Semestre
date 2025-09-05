@@ -2,7 +2,7 @@
 #                                        LIBRAIRIES 
 ## --------------------------------------------------------------------------##
 
-from Extract_Load_People_death_FR       import telechargement_fichier_personne_decedee_selon_annee 
+from Extract_Load_People_death_FR       import telechargement_fichier_personne_decedee_selon_annee
 from Extract_Load_People_death_FR       import creer_base_et_table_personne_decedee
 
 import pandas                           as pd
@@ -39,10 +39,11 @@ def gestion_path_ini () -> str:
 
             None                 
 
-        Return: 
+        Returns: 
         
-            Recherche du repertoire des fichiers log, 
-            et recherche du repertoire des fichiers ini et sql
+            Path du repertoire des fichiers log, 
+            
+            Path du repertoire des fichiers ini et sql
             
     """
     # chemin absolu du répertoire contenant ce fichier __init__.py
@@ -303,56 +304,59 @@ def ajout_distance_classe_age_origine( df_clean : pd.DataFrame) -> pd.DataFrame 
     # Noms des classes
     labels = ['0-30', '30-60', '60-90', '90+'] 
     
-    df_clean['classe_age'] = pd.cut(df_clean['age'],bins = bins,labels = labels,
-            duplicates = 'drop', right = False)
+    df_clean['classe_age'] = pd.cut(df_clean['age'],bins=bins,labels=labels,duplicates='drop', right=False)
     
     # Mapping des codes vers des labels men women
     df_clean['sexe'] = df_clean['sex'].map({'1': 'Man', '2': 'Woman'})
     
     # Calcul de la distance entre coordonnées de naissance et de mort :
     df_clean['distance'] = list(haversine_np( np.array(df_clean['latitude_naissance']),
-     np.array(df_clean['longitude_naissance']),np.array(df_clean['latitude_deces']),
-     np.array(df_clean['longitude_deces']) ) )
+     np.array(df_clean['longitude_naissance']),np.array(df_clean['latitude_deces']),np.array(df_clean['longitude_deces']) ) )
     
     df_clean['distance'] = df_clean['distance'].round(0)
     
     # Comptage des morts et distance moyenne 
-    df_clean_nb_deces_age_distance = df_clean.groupby(['annee','num_insee_deces'],
-            as_index=False).agg(nb_deces = ('idligne','count'),
-            distance_moy = ('distance', lambda x: round(x.mean(), 1)))
+    df_clean_nb_deces_age_distance = df_clean.groupby(['annee','num_insee_deces'],as_index=False).agg(nb_deces = ('idligne','count'),
+            distance_tot = ('distance', lambda x: round(x.sum(), 1)))
     # Recuperation du nombre de mort origianire de cette ville
-    df_clean_nb_originaire = df_clean.query("origine == 'O'").groupby(['annee','num_insee_deces'],
-             as_index=False).agg(nb_originaire = ('idligne','count'))
+    df_clean_nb_originaire = df_clean.query("origine == 'O'").groupby(['annee','num_insee_deces'], as_index=False).agg(nb_originaire = ('idligne','count'))
     # Recuperation du nombre de morte
-    df_clean_nb_woman = df_clean[df_clean['sexe'] == 'Woman'].groupby(['annee','num_insee_deces'], 
-            as_index=False).agg(nb_woman = ('idligne','count'))   
+    df_clean_nb_woman = df_clean[df_clean['sexe'] == 'Woman'].groupby(['annee','num_insee_deces'], as_index=False).agg(nb_woman = ('idligne','count'))   
     
     # Recuperation du nombre de mort par tranche age
     df_clean_nb_0_30 = df_clean.query("classe_age == '0-30'").groupby(['annee', 'num_insee_deces'], 
-            as_index = False).agg(nb_deces_0_30 = ('idligne','count') , 
-            distance_moy_0_30 = ('distance', lambda x: round(x.mean(), 1))) 
+            as_index = False).agg(nb_deces_0_30 = ('idligne','count') , distance_tot_0_30 = ('distance', lambda x: round(x.sum(), 1))) 
     # 30 à 60
     df_clean_nb_30_60 = df_clean.query("classe_age == '30-60'").groupby(['annee','num_insee_deces'], 
-            as_index = False).agg(nb_deces_30_60 = ('idligne','count') , 
-            distance_moy_30_60 = ('distance', lambda x: round(x.mean(), 1)))  
+            as_index = False).agg(nb_deces_30_60 = ('idligne','count') , distance_tot_30_60 = ('distance', lambda x: round(x.sum(), 1)))  
     # 60 à 90 
     df_clean_nb_60_90 = df_clean.query("classe_age == '60-90'").groupby(['annee','num_insee_deces'], 
-            as_index = False).agg(nb_deces_60_90 = ('idligne','count') , 
-            distance_moy_60_90 = ('distance', lambda x: round(x.mean(), 1)))  
+            as_index = False).agg(nb_deces_60_90 = ('idligne','count') , distance_tot_60_90 = ('distance', lambda x: round(x.sum(), 1)))  
     
     # 90 et plus
     df_clean_nb_plus_90 = df_clean.query("classe_age == '90+'").groupby(['annee','num_insee_deces'], 
-            as_index = False).agg(nb_deces_plus_90 = ('idligne','count') , 
-            distance_moy_plus_90 = ('distance', lambda x: round(x.mean(), 1))) 
+            as_index = False).agg(nb_deces_plus_90 = ('idligne','count') , distance_tot_plus_90 = ('distance', lambda x: round(x.sum(), 1))) 
     
     # Top prenom :
-    df_clean_insee_prenom = df_clean.groupby(['annee','num_insee_deces'],
-            as_index = False)['prenom'].agg(lambda x: x.value_counts().index[0])
+    df_clean_insee_prenom_woman = df_clean.query("sexe == 'Woman'").groupby(['annee','num_insee_deces'],as_index = False)['prenom'].agg(lambda x: x.value_counts().index[0])
+    df_clean_insee_prenom_woman.rename(columns={'prenom':'name_woman'},inplace = True)
     
+    df_clean_insee_prenom_man = df_clean.query("sexe == 'Man'").groupby(['annee','num_insee_deces'],as_index = False)['prenom'].agg(lambda x: x.value_counts().index[0])
+    df_clean_insee_prenom_man.rename(columns={'prenom':'name_man'},inplace = True)
+    
+    # Aggregation sur les mois 
+    df_clean_grp_month = df_clean.groupby (['annee', 'num_insee_deces', 'month_deces'], as_index = False).agg(nb_deces_month = ('idligne','count'))
+    df_clean_month = df_clean_grp_month.pivot_table(index=["annee","num_insee_deces"], columns="month_deces", values="nb_deces_month",
+                         aggfunc="sum",fill_value=0 ).reset_index()
+    # recupere la liste des mois et eviter de les ecrire manuellement
+    list_month = df_clean_month.columns.to_list()
+    del list_month[(list_month.index("annee"))]
+    del list_month [(list_month.index("num_insee_deces"))]
+
     # On merge tous ces dataframes : 
     dfs = [df_clean_nb_deces_age_distance, df_clean_nb_originaire, df_clean_nb_woman, 
-         df_clean_nb_0_30, df_clean_nb_30_60, df_clean_nb_60_90, df_clean_nb_plus_90,
-         df_clean_insee_prenom]
+           df_clean_nb_0_30, df_clean_nb_30_60, df_clean_nb_60_90, df_clean_nb_plus_90, df_clean_insee_prenom_woman,
+           df_clean_insee_prenom_man,df_clean_month]
     
     df_final = reduce(
         lambda left, right: pd.merge(left, right, on=['annee','num_insee_deces'], how="outer"),
@@ -362,18 +366,16 @@ def ajout_distance_classe_age_origine( df_clean : pd.DataFrame) -> pd.DataFrame 
     df_final = df_final.fillna(0)
     
     # declaration de colonne à corriger
-    cols_a_modifier = ['nb_originaire','nb_woman','nb_deces_0_30','nb_deces_30_60',
-                       'nb_deces_60_90','nb_deces_plus_90' ]
+    cols_a_modifier = ['nb_originaire','nb_woman','nb_deces_0_30','nb_deces_30_60','nb_deces_60_90','nb_deces_plus_90' ]
     
     # Formattage des colonnes
     df_final[cols_a_modifier] = df_final[cols_a_modifier].astype(int)
     
     # Presentation du dataframe
-    df_final = df_final[['annee','num_insee_deces','nb_deces',
-                         'nb_woman','nb_originaire','nb_deces_0_30','nb_deces_30_60',
-                         'nb_deces_60_90','nb_deces_plus_90',
-                         'distance_moy','distance_moy_0_30','distance_moy_30_60',
-                         'distance_moy_60_90','distance_moy_plus_90','prenom' ]]
+    #df_final = df_final[['annee','num_insee_deces','nb_deces',
+    #                     'nb_woman','nb_originaire','nb_deces_0_30','nb_deces_30_60','nb_deces_60_90','nb_deces_plus_90',
+    #                     'distance_moy','distance_moy_0_30','distance_moy_30_60',
+    #                     'distance_moy_60_90','distance_moy_plus_90','name_mwoman','name_man',list_month]]
     
     return df_final
 
@@ -391,10 +393,10 @@ all_df = pd.DataFrame()
 # 
 for item_an in dans_la_liste :
     # print(">>>>  telechargement_fichier_personne_decedee_selon_annee",item_an)
-    le_df = telechargement_fichier_personne_decedee_selon_annee(item_an)
+    le_df = telechargement_fichier_personne_decedee_selon_annee(PATH_RACINE,item_an)
     
     # print(">>>>  Chargement des personnes decedee",item_an)
-    creer_base_et_table_personne_decedee(le_df)
+    creer_base_et_table_personne_decedee(PATH_RACINE,le_df)
 
     engine = create_engine(creation_de_chaine_de_connexion())
     # Possible d'éviter l'itération des colonnes via information_schema de PostgreSQl
@@ -437,12 +439,13 @@ class Insee_year_death_origine_prenom(Base):
     nb_deces_30_60 = Column(Integer, comment = "Nombre de deces pour 30-60 ans")
     nb_deces_60_90 = Column(Integer, comment = "Nombre de deces pour 60-90 ans")
     nb_deces_plus_90 = Column(Integer, comment = "Nombre de deces pour plus de 90 ans")
-    distance_moy = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces")
-    distance_moy_0_30 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 0-30 ans")
-    distance_moy_30_60 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 30-60 ans")
-    distance_moy_60_90 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 60-90 ans")
-    distance_moy_plus_90 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour plus de 90 ans")
-    prenom = Column(String(50), comment = "Top 1 prenom des personnes decedees dans cette ville (H ou F)")    
+    distance_tot = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces")
+    distance_tot_0_30 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 0-30 ans")
+    distance_tot_30_60 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 30-60 ans")
+    distance_tot_60_90 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 60-90 ans")
+    distance_tot_plus_90 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour plus de 90 ans")
+    name_woman = Column(String(50), comment = "Top 1 prenom des personnes decedees dans cette ville (F)")   
+    name_man = Column(String(50), comment = "Top 1 prenom des personnes decedees dans cette ville (H)")   
     # Définition de la clé primaire composite
     __table_args__ = (
         PrimaryKeyConstraint('annee', 'num_insee_deces'),

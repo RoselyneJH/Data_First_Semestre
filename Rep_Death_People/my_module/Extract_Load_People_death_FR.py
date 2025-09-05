@@ -406,13 +406,15 @@ def verification_date(df : pd.DataFrame, an : str) -> pd.DataFrame :
          
     return df_date_naiss_et_deces_ok_clean
 
-def configuration_db(filename:str ='Fichier_Connexion.ini',section:str ='postgresql') ->Dict[str, str] :
+def configuration_db(chemin_w: str, filename:str ='Fichier_Connexion.ini',section:str ='postgresql') ->Dict[str, str] :
     """
         Args: 
         
             Nom du fichier de configuration 
             
             Nom de la base de données
+
+            Chemin racine du projet
 
         Return: 
         
@@ -422,7 +424,7 @@ def configuration_db(filename:str ='Fichier_Connexion.ini',section:str ='postgre
     # Create a parser
     parser= ConfigParser()
     # Read the configuration file
-    parser.read(PATH_RACINE + "/" + filename)
+    parser.read(chemin_w + "/" + filename)
     # Get the information from the postgresql section
     db={}
     if parser.has_section(section):
@@ -636,11 +638,13 @@ def recuperer_df_name_and_url(html_text:str) -> pd.DataFrame:
     
     return df
 
-def creation_de_chaine_de_connexion()->str:
+def creation_de_chaine_de_connexion(chemin_w:str)->str:
     '''
         Creation de la chaine de connexion
 
         Args: 
+
+            Chemin racine du projet 
 
         Return: 
             
@@ -648,7 +652,7 @@ def creation_de_chaine_de_connexion()->str:
 
     '''
     # Lecture du fichier ini :
-    db=configuration_db()
+    db=configuration_db(chemin_w)
     
     # Préparation de la chaine de connexion
     host = db['host']
@@ -693,13 +697,15 @@ def get_row_with_fallback(engine : Engine, an : str) -> pd.DataFrame:
                 return pd.DataFrame([row], columns=result.keys()) , current_an          
     return None, an
 
-def select_query_annee(an:str = "") ->pd.DataFrame:
+def select_query_annee(chemin_w : str, an:str = "") ->pd.DataFrame:
     """
     Create une requete afin de recuperer l'url_name en fonction de l'année
 
     Args:
         
         L'année selectionnée
+
+        Chemin de travail
 
     Returns:
         
@@ -709,17 +715,17 @@ def select_query_annee(an:str = "") ->pd.DataFrame:
 
     """
     # Créer le moteur SQLAlchemy
-    engine = create_engine(creation_de_chaine_de_connexion())
+    engine = create_engine(creation_de_chaine_de_connexion(chemin_w))
     # 
     # with engine.connect() as conn:
-    df ,an = get_row_with_fallback(engine, an)
+    df, an = get_row_with_fallback(engine, an)
     
     engine.dispose()
     
-    return df ,an
+    return df, an
 
 # Fonction qui permet d'enchainer les traitements de validation du fichier des personnes decedées
-def telechargement_fichier_personne_decedee_selon_annee(an : str) -> pd.DataFrame :
+def telechargement_fichier_personne_decedee_selon_annee(chemin_w : str, an : str) -> pd.DataFrame :
     """
     Permet un téléchargement du fichier des personnes decedees de l'année selectionnée.
 
@@ -745,7 +751,7 @@ def telechargement_fichier_personne_decedee_selon_annee(an : str) -> pd.DataFram
 
     """
     # Download file
-    les_urls,an = select_query_annee(an)
+    les_urls,an = select_query_annee(chemin_w, an)
     
     resultat = les_urls.loc[les_urls['annee_file']==an, 'url_file']
     # Plusieurs lignes possibles ou pas :
@@ -811,10 +817,12 @@ def telechargement_fichier_personne_decedee_selon_annee(an : str) -> pd.DataFram
         
     return df_clean
 
-def creer_base_et_table_personne_decedee ( df_clean : pd.DataFrame) -> None : 
+def creer_base_et_table_personne_decedee ( chemin_w : str, df_clean : pd.DataFrame) -> None : 
     """
     Args: 
-    
+
+        Chemin de travail 
+
         Dataframe des personnes à charger en base
 
     Return: 
@@ -823,7 +831,7 @@ def creer_base_et_table_personne_decedee ( df_clean : pd.DataFrame) -> None :
         
     """
     # Création du moteur SQLAlchemy - Crée le moteur de connexion à PostgreSQL (via psycopg)
-    engine = create_engine(creation_de_chaine_de_connexion())
+    engine = create_engine(creation_de_chaine_de_connexion(chemin_w))
 
     # Déclaration de la base ORM
     Base = declarative_base()
@@ -877,7 +885,7 @@ def creer_base_et_table_personne_decedee ( df_clean : pd.DataFrame) -> None :
         with engine.connect() as connection:
             with connection.begin():  # démarre une transaction
                 # Charger un script SQL depuis un fichier
-                with open(PATH_RACINE + "/" + "Prj_Death_People_death_people_BDD.sql", "r") as f:
+                with open(chemin_w + "/" + "Prj_Death_People_death_people_BDD.sql", "r") as f:
                     sql_script = f.read()
                 # Execution pas à pas des requetes
                 for statement in sql_script.split(';'):
@@ -893,9 +901,24 @@ def creer_base_et_table_personne_decedee ( df_clean : pd.DataFrame) -> None :
     
     # Correct pour vider/fermer le pool de connexions
     engine.dispose()
-  
 
-#--------------------------
+# NEW
+def chemin_de_travail() -> str:
+    """
+        Permet d'identifier le path de travail de ce module
+
+        Args: 
+
+            None
+
+        Returns:
+
+            Le chemin du path associé à la recupérations des données
+
+    """
+    PATH_RACINE, PATH_LOG = gestion_path_ini()
+    return PATH_RACINE
+
 
 ## -------------------------------------------------------------------------##
 #                                  MAIN  
@@ -972,7 +995,7 @@ if __name__ == "__main__":
     an="2009"
 
     # Telechargement du fichier :
-    df_clean = telechargement_fichier_personne_decedee_selon_annee(an)
+    df_clean = telechargement_fichier_personne_decedee_selon_annee(PATH_RACINE, an)
 
     # Crée le moteur de connexion à PostgreSQL (via psycopg)
     engine = create_engine(creation_de_chaine_de_connexion())
