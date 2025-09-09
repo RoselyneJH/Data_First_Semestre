@@ -60,7 +60,7 @@ def gestion_path_ini () -> str:
     # chemin vers ton fichier.ini
     log_path = os.path.normpath( os.path.join(base_dir, "..", "my_log") )
 
-    return racine_projet, log_path
+    return racine_projet, log_path, base_dir
 
 def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
     """
@@ -254,7 +254,7 @@ def parsing_file(le_df_mal_formate: pd.DataFrame) -> List[Dict]:
     
     return raw_data  
 
-def traitement_validation(an: str):
+def traitement_validation(chemin_w: str, an: str) -> Tuple :
     """
         Lecture du fichier fichier_deces.txt
 
@@ -268,7 +268,9 @@ def traitement_validation(an: str):
         
         Args:  
 
-            None
+            chemin de travail
+
+            année selectionnée
 
         Return: 
         
@@ -277,11 +279,17 @@ def traitement_validation(an: str):
     """
     # Reconstitution des colonnes et creation du Dataframe de l'année selectionnée :
     start = time.time()
-    # Ouverture du fichier  attention, il faut choisir un encoding latin1
-    le_df_mal_formate = pd.read_csv("fichier_deces.txt", delimiter="\t", header=None, encoding="latin1")  
+    
+    fichier_complet = os.path.join(chemin_w, "fichier_deces.txt")
+    print("-------->  chemin_w",fichier_complet)
+
+    # Ouverture du fichier  attention, il faut choisir un encoding latin1, pas de separateur car certains
+    # fichiers comportent plusieurs virgules et/ou tabulations + un warn sur les lignes incorrectes
+    le_df_mal_formate = pd.read_csv(fichier_complet, on_bad_lines="warn", header=None, encoding="latin1")  
     
     # Creation Dataframe final, declaration des colonnes :
-    df=pd.DataFrame(columns = ["nom","prenom","sex","date_naissance","num_insee_naissance","ville_naissance","pays_naissance","date_deces","num_insee_deces"])
+    df = pd.DataFrame(columns = ["nom","prenom","sex","date_naissance","num_insee_naissance","ville_naissance",
+    "pays_naissance","date_deces","num_insee_deces"])
     
     # execution du parsing de colonne, travail d'identification des colonnes dans la colonne
     raw_data = parsing_file(le_df_mal_formate)
@@ -725,7 +733,7 @@ def select_query_annee(chemin_w : str, an:str = "") ->pd.DataFrame:
     return df, an
 
 # Fonction qui permet d'enchainer les traitements de validation du fichier des personnes decedées
-def telechargement_fichier_personne_decedee_selon_annee(chemin_w : str, an : str) -> pd.DataFrame :
+def telechargement_fichier_personne_decedee_selon_annee(chemin_w : str, base_dir : str, an : str) -> pd.DataFrame :
     """
     Permet un téléchargement du fichier des personnes decedees de l'année selectionnée.
 
@@ -733,7 +741,7 @@ def telechargement_fichier_personne_decedee_selon_annee(chemin_w : str, an : str
      
         année selectionée
 
-    Return:
+    Returns:
      
      Le fichier des personnes decedées
 
@@ -752,8 +760,9 @@ def telechargement_fichier_personne_decedee_selon_annee(chemin_w : str, an : str
     """
     # Download file
     les_urls,an = select_query_annee(chemin_w, an)
-    
+        
     resultat = les_urls.loc[les_urls['annee_file']==an, 'url_file']
+    
     # Plusieurs lignes possibles ou pas :
     if resultat.empty:
         print("Aucune valeur trouvée pour l'annee",an,"; Selection de l'année 2024")
@@ -767,15 +776,16 @@ def telechargement_fichier_personne_decedee_selon_annee(chemin_w : str, an : str
     try:
         response = requests.get(url)
         response.raise_for_status()  # Vérifie si la réponse est OK (code 200)
-        
+        print("--------> avant open fichier",an)
         # Sauvegarder le fichier si la requête est réussie
         with open("fichier_deces.txt", "wb") as f:
             f.write(response.content)
         
         print("Fichier téléchargé avec succès.")
         logger.info(f"Fichier ({an}) téléchargé avec succès.")
-    
-        df, errors = traitement_validation(an)
+        print("---------> fichier base",base_dir)
+        df, errors = traitement_validation(base_dir,an)
+        
         df_clean  = verification_date(df,an)
         df_clean  = incoherence_attribution_ville_pays_naissance(df_clean)
     
@@ -795,6 +805,9 @@ def telechargement_fichier_personne_decedee_selon_annee(chemin_w : str, an : str
         df_clean = df_clean[['idligne','nom','prenom','sex','date_naissance_dt','num_insee_naissance',
                              'ville_naissance','pays_naissance',
                            'date_deces_dt','num_insee_deces','ville_deces','age','annee']] 
+        
+        # on peut le supprimer
+        os.remove("fichier_deces.txt")
          
     except requests.exceptions.HTTPError as errh:
         print(f" Erreur HTTP : {errh}")
@@ -926,7 +939,7 @@ def chemin_de_travail() -> str:
 
 if __name__ == "__main__":
     # Path 
-    PATH_RACINE, PATH_LOG = gestion_path_ini()
+    PATH_RACINE, PATH_LOG, BASE_DIR = gestion_path_ini()
 
     if ETAT_BDD == "NON_CHARGE" :
         # Configurer loguru
@@ -995,7 +1008,7 @@ if __name__ == "__main__":
     an="2009"
 
     # Telechargement du fichier :
-    df_clean = telechargement_fichier_personne_decedee_selon_annee(PATH_RACINE, an)
+    df_clean = telechargement_fichier_personne_decedee_selon_annee(PATH_RACINE,BASE_DIR, an)
 
     # Crée le moteur de connexion à PostgreSQL (via psycopg)
     engine = create_engine(creation_de_chaine_de_connexion())

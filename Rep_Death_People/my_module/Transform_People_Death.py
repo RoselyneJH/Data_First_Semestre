@@ -26,6 +26,7 @@ from sqlalchemy.schema                  import PrimaryKeyConstraint
 from functools                          import reduce
 import os 
 
+
 ## -------------------------------------------------------------------------##
 #                                  FONCTIONS  
 ## -------------------------------------------------------------------------##
@@ -44,6 +45,8 @@ def gestion_path_ini () -> str:
             Path du repertoire des fichiers log, 
             
             Path du repertoire des fichiers ini et sql
+
+            Path du répertoire my_module [base]
             
     """
     # chemin absolu du répertoire contenant ce fichier __init__.py
@@ -53,7 +56,7 @@ def gestion_path_ini () -> str:
     # chemin vers ton fichier.ini
     log_path = os.path.normpath( os.path.join(base_dir, "..", "my_log") )
 
-    return racine_projet, log_path
+    return racine_projet, log_path, base_dir
 
 
 def configuration_db(filename : str ='Fichier_Connexion.ini', section : str ='postgresql') -> Dict[str, str] :
@@ -384,16 +387,17 @@ def ajout_distance_classe_age_origine( df_clean : pd.DataFrame) -> pd.DataFrame 
 ## -------------------------------------------------------------------------##
 
  # Path 
-PATH_RACINE, PATH_LOG = gestion_path_ini()
+PATH_RACINE, PATH_LOG, BASE_DIR = gestion_path_ini()
 #---- 
-dans_la_liste = ['2008','2009','2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022','2023','2024']
+dans_la_liste = ['2005','2006','2007','2008','2009','2010','2011','2012','2013',
+'2014','2015','2016','2017','2018','2019','2020','2021','2022','2023','2024']
 
 # init dataframe
 all_df = pd.DataFrame()
 # 
-for item_an in dans_la_liste :
-    # print(">>>>  telechargement_fichier_personne_decedee_selon_annee",item_an)
-    le_df = telechargement_fichier_personne_decedee_selon_annee(PATH_RACINE,item_an)
+for une_annee in dans_la_liste :
+    # 
+    le_df = telechargement_fichier_personne_decedee_selon_annee(PATH_RACINE,BASE_DIR, une_annee)
     
     # print(">>>>  Chargement des personnes decedee",item_an)
     creer_base_et_table_personne_decedee(PATH_RACINE,le_df)
@@ -419,7 +423,6 @@ for item_an in dans_la_liste :
     # Creation des champs classe et taux d'origine :
     df_final = ajout_distance_classe_age_origine( df_clean )
     
-    # print(">>>>  pd.concat([df , df_final")
     all_df = pd.concat([all_df , df_final], axis=0)
 
 engine = create_engine(creation_de_chaine_de_connexion())
