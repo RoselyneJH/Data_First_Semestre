@@ -352,9 +352,9 @@ def ajout_distance_classe_age_origine( df_clean : pd.DataFrame) -> pd.DataFrame 
     df_clean_month = df_clean_grp_month.pivot_table(index=["annee","num_insee_deces"], columns="month_deces", values="nb_deces_month",
                          aggfunc="sum",fill_value=0 ).reset_index()
     # recupere la liste des mois et eviter de les ecrire manuellement
-    list_month = df_clean_month.columns.to_list()
-    del list_month[(list_month.index("annee"))]
-    del list_month [(list_month.index("num_insee_deces"))]
+    # list_month = df_clean_month.columns.to_list()
+    # del list_month[(list_month.index("annee"))]
+    # del list_month [(list_month.index("num_insee_deces"))]
 
     # On merge tous ces dataframes : 
     dfs = [df_clean_nb_deces_age_distance, df_clean_nb_originaire, df_clean_nb_woman, 
@@ -442,13 +442,25 @@ class Insee_year_death_origine_prenom(Base):
     nb_deces_30_60 = Column(Integer, comment = "Nombre de deces pour 30-60 ans")
     nb_deces_60_90 = Column(Integer, comment = "Nombre de deces pour 60-90 ans")
     nb_deces_plus_90 = Column(Integer, comment = "Nombre de deces pour plus de 90 ans")
-    distance_tot = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces")
-    distance_tot_0_30 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 0-30 ans")
-    distance_tot_30_60 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 30-60 ans")
-    distance_tot_60_90 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour 60-90 ans")
-    distance_tot_plus_90 = Column(Float, comment = "Distance moyenne entre ville de naissance et de deces pour plus de 90 ans")
+    distance_tot = Column(Float, comment = "Cumul distance entre ville de naissance et de deces")
+    distance_tot_0_30 = Column(Float, comment = "Cumul distance entre ville de naissance et de deces pour 0-30 ans")
+    distance_tot_30_60 = Column(Float, comment = "Cumul distance entre ville de naissance et de deces pour 30-60 ans")
+    distance_tot_60_90 = Column(Float, comment = "Cumul distance entre ville de naissance et de deces pour 60-90 ans")
+    distance_tot_plus_90 = Column(Float, comment = "Cumul distance entre ville de naissance et de deces pour plus de 90 ans")
     name_woman = Column(String(50), comment = "Top 1 prenom des personnes decedees dans cette ville (F)")   
-    name_man = Column(String(50), comment = "Top 1 prenom des personnes decedees dans cette ville (H)")   
+    name_man = Column(String(50), comment = "Top 1 prenom des personnes decedees dans cette ville (H)")
+    Jan = Column(Integer, comment = "Nombre de morts en janvier") 
+    Fev = Column(Integer, comment = "Nombre de morts en fevrier") 
+    Mar = Column(Integer, comment = "Nombre de morts en mars") 
+    Apr = Column(Integer, comment = "Nombre de morts en avril") 
+    May = Column(Integer, comment = "Nombre de morts en mai")
+    Jun = Column(Integer, comment = "Nombre de morts en juin") 
+    Jui = Column(Integer, comment = "Nombre de morts en juillet") 
+    Aou = Column(Integer, comment = "Nombre de morts en aout") 
+    Sep = Column(Integer, comment = "Nombre de morts en septembre") 
+    Oct = Column(Integer, comment = "Nombre de morts en octobre")
+    Nov = Column(Integer, comment = "Nombre de morts en novembre")  
+    Dec = Column(Integer, comment = "Nombre de morts en decembre")  
     # Définition de la clé primaire composite
     __table_args__ = (
         PrimaryKeyConstraint('annee', 'num_insee_deces'),
