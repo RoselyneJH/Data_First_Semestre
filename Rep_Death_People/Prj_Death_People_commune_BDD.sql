@@ -63,10 +63,11 @@ CREATE TABLE commune_principale_et_ncaledonie_pays AS
 WITH
 cte_commune_principale_et_ncaledonie AS (select distinct coalesce(pri.num_insee,nco.num_insee) as num_insee,
 coalesce(pri.nom_commune_postal,nco.commune) as nom_commune_postal,
-coalesce(pri.nom_departement,'Nouvelle-Caledonie') as nom_departement,
-coalesce(pri.nom_region,'Nouvelle-Caledonie') as nom_region,
+coalesce(pri.nom_departement,nco.nom_departement) as nom_departement,
+coalesce(pri.nom_region,nco.nom_region) as nom_region,
 coalesce(pri.latitude,nco.latitude) as latitude,coalesce(pri.longitude,nco.longitude) as longitude,
-coalesce(pri.code_departement,null) as code_departement,coalesce(pri.code_region,null) as code_region
+CASE WHEN (pri.code_departement ='nan' or pri.code_departement ='098') THEN '988' ELSE pri.code_departement END as code_departement,
+CASE WHEN pri.code_region = 'nan' then '98' else pri.code_region end as code_region
 from commune_nouvelle_caledonie nco full outer join 
 commune_principale_et_agglo pri on (nco.num_insee=pri.num_insee)
 ), cte_commune_pays AS (select distinct coalesce(co.num_insee,pa.num_insee) as num_insee,
@@ -105,7 +106,7 @@ cpn.latitude,cpn.longitude,cpn.code_departement,cpn.nom_departement,cpn.code_reg
 from cte_tous_num_insee ctni left join commune_principale_et_ncaledonie_pays cpn
 on (ctni.num_insee_valide = cpn.num_insee ) )
 select num_insee_search,num_insee_valide,commune_valide,origine,
-latitude,longitude,code_departement,nom_departement,code_region,nom_region from cte_ccompletude 
+latitude,longitude,code_departement,upper(nom_departement) as nom_departement,code_region,upper(nom_region) as nom_region from cte_ccompletude 
 order by num_insee_search
 ;
 

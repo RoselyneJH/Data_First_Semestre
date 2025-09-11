@@ -464,9 +464,16 @@ def recuperation_commune_nouvelle_caledonie(url : str) -> pd.DataFrame :
     # Je moyenne la position géo pour toutes les communes de NCalédonie pour l'instant 
     df_new_caledonie['latitude']  = -21.123889
     df_new_caledonie['longitude'] = 165.846901
+    # La nouvelle-caledonie n'est ni un region, ni un departement mais une collectivité
+    # attribution du code insee pour le departement et la region.
+    df_new_caledonie['code_departement']='988' 
+    df_new_caledonie['nom_departement']='NOUVELLE-CALEDONIE'
+    df_new_caledonie['code_region']='98'
+    df_new_caledonie['nom_region']='NOUVELLE-CALEDONIE'
 
     # >Renommer les colonnes :
-    df_ncaledonie=df_new_caledonie[['num_insee','commune','population','annee','commune_valide','latitude','longitude']].copy()
+    df_ncaledonie=df_new_caledonie[['num_insee','commune','population','annee','commune_valide','latitude','longitude',
+    'code_departement','nom_departement','code_region','nom_region']].copy()
 
     if df_new_caledonie.duplicated().sum()>0 :
         print("Il y a des doublons :",df_new_caledonie.duplicated().sum(),"Suppression !")
@@ -590,6 +597,10 @@ def chargement_dwh(df_commune_2020  : str, df_mvt_sans_dbl : str ,df_new_caledon
         commune_valide=Column(String, nullable=False)
         latitude = Column(Float)
         longitude = Column(Float)
+        code_departement = Column(String(3))
+        nom_departement = Column(String(30))
+        code_region = Column(String(2))
+        nom_region = Column(String(30))
 
     ##########################################################################
     # Supprimer l’ancienne table si elle existe
