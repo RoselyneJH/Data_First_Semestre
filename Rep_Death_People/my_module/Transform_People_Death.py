@@ -141,7 +141,8 @@ def select_death_people() ->pd.DataFrame:
     la_query= la_query + "nom_region_naissance,date_deces_dt,num_insee_deces,"
     la_query= la_query + "ville_deces,latitude_deces,longitude_deces,"
     la_query= la_query + "code_departement_deces,nom_departement_deces,"
-    la_query= la_query + "code_region_deces,nom_region_deces,age,annee "
+    la_query= la_query + "code_region_deces,nom_region_deces,age,annee,"
+    la_query= la_query + "origine_ville,origine_departement,origine_region "
     la_query= la_query + "FROM death_people_view"
     # Non ici il faut faire un select selon l'année choisie
     with engine.connect() as connection:
@@ -322,7 +323,10 @@ def ajout_distance_classe_age_origine( df_clean : pd.DataFrame) -> pd.DataFrame 
     df_clean_nb_deces_age_distance = df_clean.groupby(['annee','num_insee_deces'],as_index=False).agg(nb_deces = ('idligne','count'),
             distance_tot = ('distance', lambda x: round(x.sum(), 1)))
     # Recuperation du nombre de mort origianire de cette ville
-    df_clean_nb_originaire = df_clean.query("origine == 'O'").groupby(['annee','num_insee_deces'], as_index=False).agg(nb_originaire = ('idligne','count'))
+    df_clean_nb_ville_origine = df_clean.query("origine_ville == 'O'").groupby(['annee','num_insee_deces'], as_index=False).agg(nb_origine_ville = ('idligne','count'))
+    df_clean_nb_departement_origine = df_clean.query("origine_departement == 'O'").groupby(['annee','num_insee_deces'], as_index=False).agg(nb_origine_departement = ('idligne','count'))
+    df_clean_nb_region_origine = df_clean.query("origine_region == 'O'").groupby(['annee','num_insee_deces'], as_index=False).agg(nb_origine_region = ('idligne','count'))
+    
     # Recuperation du nombre de morte
     df_clean_nb_woman = df_clean[df_clean['sexe'] == 'Woman'].groupby(['annee','num_insee_deces'], as_index=False).agg(nb_woman = ('idligne','count'))   
     
@@ -357,8 +361,9 @@ def ajout_distance_classe_age_origine( df_clean : pd.DataFrame) -> pd.DataFrame 
     # del list_month [(list_month.index("num_insee_deces"))]
 
     # On merge tous ces dataframes : 
-    dfs = [df_clean_nb_deces_age_distance, df_clean_nb_originaire, df_clean_nb_woman, 
-           df_clean_nb_0_30, df_clean_nb_30_60, df_clean_nb_60_90, df_clean_nb_plus_90, df_clean_insee_prenom_woman,
+    dfs = [df_clean_nb_deces_age_distance, df_clean_nb_ville_origine,df_clean_nb_departement_origine,
+           df_clean_nb_region_origine,df_clean_nb_woman,df_clean_nb_0_30, df_clean_nb_30_60, 
+           df_clean_nb_60_90, df_clean_nb_plus_90, df_clean_insee_prenom_woman,
            df_clean_insee_prenom_man,df_clean_month]
     
     df_final = reduce(
@@ -369,7 +374,8 @@ def ajout_distance_classe_age_origine( df_clean : pd.DataFrame) -> pd.DataFrame 
     df_final = df_final.fillna(0)
     
     # declaration de colonne à corriger
-    cols_a_modifier = ['nb_originaire','nb_woman','nb_deces_0_30','nb_deces_30_60','nb_deces_60_90','nb_deces_plus_90' ]
+    cols_a_modifier = ['nb_origine_ville','nb_origine_departement','nb_origine_region','nb_woman',
+                       'nb_deces_0_30','nb_deces_30_60','nb_deces_60_90','nb_deces_plus_90' ]
     
     # Formattage des colonnes
     df_final[cols_a_modifier] = df_final[cols_a_modifier].astype(int)
@@ -404,22 +410,32 @@ for une_annee in dans_la_liste :
 
     engine = create_engine(creation_de_chaine_de_connexion())
     # Possible d'éviter l'itération des colonnes via information_schema de PostgreSQl
-    la_query="SELECT idligne, prenom,sex,date_naissance_dt,num_insee_naissance,"
-    la_query=la_query + "ville_naissance,pays_naissance,latitude_naissance,"
-    la_query=la_query + "longitude_naissance,code_departement_naissance,"
-    la_query=la_query + "nom_departement_naissance, code_region_naissance,"
-    la_query=la_query + "nom_region_naissance,date_deces_dt,num_insee_deces,"
-    la_query=la_query + "ville_deces,latitude_deces,longitude_deces,"
-    la_query=la_query + "code_departement_deces,nom_departement_deces,"
-    la_query=la_query + "code_region_deces,nom_region_deces,age,annee,"
-    la_query=la_query + "origine FROM death_people_view"
+    la_query = "SELECT idligne, prenom,sex,date_naissance_dt,num_insee_naissance,"
+    la_query = la_query + "ville_naissance,pays_naissance,latitude_naissance,"
+    la_query = la_query + "longitude_naissance,code_departement_naissance,"
+    la_query = la_query + "nom_departement_naissance, code_region_naissance,"
+    la_query = la_query + "nom_region_naissance,date_deces_dt,num_insee_deces,"
+    la_query = la_query + "ville_deces,latitude_deces,longitude_deces,"
+    la_query = la_query + "code_departement_deces,nom_departement_deces,"
+    la_query = la_query + "code_region_deces,nom_region_deces,age,annee,"
+    la_query = la_query + "origine_ville,origine_departement,origine_region FROM death_people_view"
+
+    #la_query_insee_naissance_deces = "SELECT annee,num_insee_naissance, num_insee_deces, COUNT(idligne)"
+    #la_query_insee_naissance_deces = la_query_insee_naissance_deces + " FROM death_people_view"
+    #la_query_insee_naissance_deces = la_query_insee_naissance_deces + " WHERE num_insee_naissance<> num_insee_deces"
+    #la_query_insee_naissance_deces = la_query_insee_naissance_deces + " AND UPPER(nom_departement_naissance)"
+    #la_query_insee_naissance_deces = la_query_insee_naissance_deces + " <> UPPER(nom_departement_deces)"
+    #la_query_insee_naissance_deces = la_query_insee_naissance_deces + " GROUP BY annee,num_insee_naissance,"
+    #la_query_insee_naissance_deces = la_query_insee_naissance_deces + " num_insee_deces HAVING COUNT(*) >30"
+    #la_query_insee_naissance_deces = la_query_insee_naissance_deces + " ORDER BY COUNT DESC"
 
     with engine.connect() as conn:
-        df = pd.read_sql(text(la_query), conn)
+        df  = pd.read_sql(text(la_query), conn)
+        # Deuxième requête
+        #df2 = pd.read_sql(text(la_query_insee_naissance_deces), conn)
 
     df_clean = nettoyage_region_departement_latitude( df )
 
-    # print(">>>>  ajout_distance_classe_age_origine")
     # Creation des champs classe et taux d'origine :
     df_final = ajout_distance_classe_age_origine( df_clean )
     
@@ -437,7 +453,9 @@ class Insee_year_death_origine_prenom(Base):
     num_insee_deces = Column(String(5), comment="1er elément de la clé : Num insee de la ville de deces", nullable = False) 
     nb_deces = Column(Integer, comment = "Nombre de deces dans cette ville")
     nb_woman = Column(Integer, comment = "Nombre de deces de femme")
-    nb_originaire = Column(Integer, comment = "Nombre de deces originaire de cette ville")
+    nb_origine_ville = Column(Integer, comment = "Nombre de deces originaire de cette ville")
+    nb_origine_departement = Column(Integer, comment = "Nombre de deces originaire de ce departement")
+    nb_origine_region = Column(Integer, comment = "Nombre de deces originaire de cette region")    		
     nb_deces_0_30 = Column(Integer, comment = "Nombre de deces pour 0-30 ans")
     nb_deces_30_60 = Column(Integer, comment = "Nombre de deces pour 30-60 ans")
     nb_deces_60_90 = Column(Integer, comment = "Nombre de deces pour 60-90 ans")
@@ -467,10 +485,26 @@ class Insee_year_death_origine_prenom(Base):
          {"comment": "Table des statitiques sur les communes pour une année Nombre de mort, femme, originaire de la commune, classe d'âge et top prenom"}
     )
 
+# Définition de la table
+#class Insee_naissance_death(Base):
+#    __tablename__ = 'insee_naissance_death'
+#    annee = Column(String(4), comment = "2ieme elément de la clé : annee de deces", nullable = False)
+#    num_insee_naissance = Column(String(5), comment="1er elément de la clé : Num insee de la ville de naissance", nullable = False) 
+#    num_insee_death     = Column(String(5), comment="1er elément de la clé : Num insee de la ville de deces", nullable = False) 
+
+#    nb_deces = Column(Integer, comment = "Nombre de deces né et mort dans ces villes")
+    # Définition de la clé primaire composite
+#    __table_args__ = (
+#        PrimaryKeyConstraint('annee', 'num_insee_naissance', 'num_insee_deces'),
+#         {"comment": "Table recuperant les couples naissance/deces"}
+#    )
+
 # Création de la table dans la base
 Base.metadata.create_all(engine)
 
 chargement_df_en_sql(engine, all_df, 'insee_year_death_origine_prenom')
+# a finir :
+# chargement_df_en_sql(engine, all_df, 'insee_naissance_death')
 
 # Correct pour vider/fermer le pool de connexions
 engine.dispose()

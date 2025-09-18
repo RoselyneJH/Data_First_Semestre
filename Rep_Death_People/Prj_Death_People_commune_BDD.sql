@@ -105,7 +105,7 @@ select ctni.num_insee_search,ctni.num_insee_valide,ctni.commune_valide,ctni.orig
 cpn.latitude,cpn.longitude,cpn.code_departement,cpn.nom_departement,cpn.code_region,cpn.nom_region
 from cte_tous_num_insee ctni left join commune_principale_et_ncaledonie_pays cpn
 on (ctni.num_insee_valide = cpn.num_insee ) )
-select num_insee_search,num_insee_valide,commune_valide,origine,
+select num_insee_search,num_insee_valide,upper(commune_valide) as commune_valide,origine,
 latitude,longitude,code_departement,upper(nom_departement) as nom_departement,code_region,upper(nom_region) as nom_region from cte_ccompletude 
 order by num_insee_search
 ;

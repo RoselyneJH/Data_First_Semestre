@@ -25,7 +25,9 @@ SELECT c1.idligne as idligne,num_insee_naissance,ville_naissance
 code_departement_naissance,nom_departement_naissance, code_region_naissance,nom_region_naissance
 ,num_insee_deces ,ville_deces
 ,latitude_deces,longitude_deces,code_departement_deces,nom_departement_deces,
-code_region_deces,nom_region_deces
+code_region_deces,nom_region_deces,case when ville_naissance = ville_deces then 'O' else 'N' end as origine_ville,
+case when nom_departement_naissance = nom_departement_deces then 'O' else 'N' end as origine_departement,
+case when nom_region_naissance = nom_region_deces then 'O' else 'N' end as origine_region
 FROM cte_death c2, cte_naissance c1 where c1.idligne=c2.idligne
 order by c1.idligne 
 ; 
@@ -43,8 +45,8 @@ af.code_departement_naissance,coalesce(af.nom_departement_naissance,de.pays_nais
 af.code_region_naissance,coalesce(af.nom_region_naissance,de.pays_naissance) as nom_region_naissance
 ,de.date_deces_dt,af.num_insee_deces ,af.ville_deces
 ,af.latitude_deces,af.longitude_deces,af.code_departement_deces,af.nom_departement_deces,
-af.code_region_deces,af.nom_region_deces,de.age,de.annee,case when af.num_insee_naissance = af.num_insee_deces then 'O' else 'N' end
-as origine
+af.code_region_deces,af.nom_region_deces,de.age,de.annee,origine_ville,origine_departement,
+origine_region
 from affectation_insee_site_naissance_death af
 inner join death_people de on (de.idligne=af.idligne))	
 ;
