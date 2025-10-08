@@ -42,6 +42,8 @@ from loguru import logger
 
 import os
 
+from Connexion_Bdd import ConnexionBdd
+
 
 # URL directe vers le fichier
 URL_COMMUNE_2020_ZIP = (
@@ -92,7 +94,7 @@ def gestion_path_ini() -> str:
 
     return racine_projet, log_path
 
-
+'''
 def configuration_db(
     filename: str = "Fichier_Connexion.ini", section: str = "postgresql"
 ) -> Dict[str, str]:
@@ -124,7 +126,7 @@ def configuration_db(
         raise Exception("Section {0} not found in {1}".format(section, filename))
 
     return db
-
+'''
 
 def prepare_dataframe_for_sql(df: pd.DataFrame, drop_columns=None) -> pd.DataFrame:
     """
@@ -193,7 +195,7 @@ def chargement_df_en_sql(engine: Engine, df: pd.DataFrame, nom_table: str) -> No
 
     print("Table", nom_table, "chargee !")
 
-
+'''
 def creation_de_chaine_de_connexion() -> str:
     """
     Permet de créer la chaine de connexion à la bdd
@@ -220,6 +222,7 @@ def creation_de_chaine_de_connexion() -> str:
     url = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{database}"
     return url
 
+'''
 
 def ajout_coordonnees_geo(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -691,26 +694,32 @@ def chargement_dwh(
     df_mvt_sans_dbl: str,
     df_new_caledonie_sans_dbl: str,
     le_df_commune_principal_sans_dbl: str,
-    df_insee_lat_lon: str,
+    df_insee_lat_lon: str, 
+    url_Bdd: str
 ):
     """
     Chargement des données dans le DWH
 
     Args:
 
-        données sur les mouvement de commune
+        données sur 
+        
+            les mouvement de commune
 
             sur les communes de la Nouvelle Caledonie
 
-            sur les communes exagonales
+            sur les communes exagonales (2020 + commune principale)
 
+            données géographiques Lat et Lon
+
+            Url de la base de données
     Returns:
 
         None
 
     """
-
-    engine = create_engine(creation_de_chaine_de_connexion())
+    
+    engine = create_engine(url_Bdd)
 
     # Base ORM
     Base = declarative_base()
@@ -822,6 +831,12 @@ def chargement_dwh(
 
 # Path
 PATH_RACINE, PATH_LOG = gestion_path_ini()
+
+# Instancier la classe d'accès à la base de données
+my_bdd = ConnexionBdd(path_racine = PATH_RACINE, filename = "Fichier_Connexion.ini", section = "postgresql" )
+# Creation de l'Url
+url_Bdd = my_bdd.creation_de_chaine_de_connexion()
+
 # Configurer loguru
 logger.add(
     PATH_LOG + "/" + "DownLoad_File_commune_std.log", rotation="500 MB", level="INFO"
@@ -847,7 +862,8 @@ chargement_dwh(
     df_mvt_sans_dbl,
     df_new_caledonie_sans_dbl,
     le_df_commune_principal_sans_dbl,
-    df_insee_lat_lon,
+    df_insee_lat_lon, 
+    url_Bdd
 )
 logger.info("CHARGEMENT DWH ")
 #
