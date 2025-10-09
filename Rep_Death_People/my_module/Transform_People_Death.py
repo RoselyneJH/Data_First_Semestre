@@ -38,6 +38,7 @@ from sqlalchemy.schema import PrimaryKeyConstraint
 from functools import reduce
 import os
 
+from Connexion_Bdd import ConnexionBdd
 
 ## -------------------------------------------------------------------------##
 #                                  FONCTIONS
@@ -70,7 +71,7 @@ def gestion_path_ini() -> str:
 
     return racine_projet, log_path, base_dir
 
-
+'''
 def configuration_db(
     filename: str = "Fichier_Connexion.ini", section: str = "postgresql"
 ) -> Dict[str, str]:
@@ -167,7 +168,7 @@ def select_death_people() -> pd.DataFrame:
     engine.dispose()
 
     return df
-
+'''
 
 def haversine_np(
     lat1: np.ndarray, lon1: np.ndarray, lat2: np.ndarray, lon2: np.ndarray
@@ -312,7 +313,7 @@ def nettoyage_region_departement_latitude(df: pd.DataFrame) -> pd.DataFrame:
     return df_clean
 
 
-def ajout_distance_classe_age_origine(df_clean: pd.DataFrame) -> pd.DataFrame:
+def ajout_distance_classe_age_origine(df_clean_: pd.DataFrame) -> pd.DataFrame:
     """
     Process  Ajout des classes d'age et comptabilité liée,
                 nombre personne originaire, des distances entre
@@ -327,6 +328,8 @@ def ajout_distance_classe_age_origine(df_clean: pd.DataFrame) -> pd.DataFrame:
         Dataframe transforme
 
     """
+    df_clean = df_clean_.copy()
+
     # Définition des bornes des classes (attention à bien couvrir tout l’intervalle)
     bins = [0, 30, 60, 90, 130]
 
@@ -447,10 +450,6 @@ def ajout_distance_classe_age_origine(df_clean: pd.DataFrame) -> pd.DataFrame:
         aggfunc="sum",
         fill_value=0,
     ).reset_index()
-    # recupere la liste des mois et eviter de les ecrire manuellement
-    # list_month = df_clean_month.columns.to_list()
-    # del list_month[(list_month.index("annee"))]
-    # del list_month [(list_month.index("num_insee_deces"))]
 
     # On merge tous ces dataframes :
     dfs = [
@@ -492,12 +491,6 @@ def ajout_distance_classe_age_origine(df_clean: pd.DataFrame) -> pd.DataFrame:
     # Formattage des colonnes
     df_final[cols_a_modifier] = df_final[cols_a_modifier].astype(int)
 
-    # Presentation du dataframe
-    # df_final = df_final[['annee','num_insee_deces','nb_deces',
-    #                     'nb_woman','nb_originaire','nb_deces_0_30','nb_deces_30_60','nb_deces_60_90','nb_deces_plus_90',
-    #                     'distance_moy','distance_moy_0_30','distance_moy_30_60',
-    #                     'distance_moy_60_90','distance_moy_plus_90','name_mwoman','name_man',list_month]]
-
     return df_final
 
 
@@ -507,7 +500,17 @@ def ajout_distance_classe_age_origine(df_clean: pd.DataFrame) -> pd.DataFrame:
 
 # Path
 PATH_RACINE, PATH_LOG, BASE_DIR = gestion_path_ini()
+
+# Instancier la classe d'accès à la base de données
+my_bdd = ConnexionBdd(path_racine = PATH_RACINE, filename = "Fichier_Connexion.ini", 
+section = "postgresql" 
+)
+# Creation de l'Url
+url_Bdd = my_bdd.creation_de_chaine_de_connexion()
+
 # ----
+dans_la_liste = ["2024" ]
+'''
 dans_la_liste = [
     "2005",
     "2006",
@@ -530,20 +533,21 @@ dans_la_liste = [
     "2023",
     "2024",
 ]
-
+'''
 # init dataframe
 all_df = pd.DataFrame()
 #
 for une_annee in dans_la_liste:
     #
     le_df = telechargement_fichier_personne_decedee_selon_annee(
-        PATH_RACINE, BASE_DIR, une_annee
+        url_Bdd, BASE_DIR, une_annee
     )
 
-    # print(">>>>  Chargement des personnes decedee",item_an)
-    creer_base_et_table_personne_decedee(PATH_RACINE, le_df)
+    creer_base_et_table_personne_decedee(PATH_RACINE, url_Bdd, le_df)
 
-    engine = create_engine(creation_de_chaine_de_connexion())
+    #engine = create_engine(creation_de_chaine_de_connexion())
+    engine = create_engine(url_Bdd)
+
     # Possible d'éviter l'itération des colonnes via information_schema de PostgreSQl
     la_query = "SELECT idligne, prenom,sex,date_naissance_dt,num_insee_naissance,"
     la_query = la_query + "ville_naissance,pays_naissance,latitude_naissance,"
@@ -581,7 +585,8 @@ for une_annee in dans_la_liste:
 
     all_df = pd.concat([all_df, df_final], axis=0)
 
-engine = create_engine(creation_de_chaine_de_connexion())
+# engine = create_engine(creation_de_chaine_de_connexion())
+engine = create_engine(url_Bdd)
 
 # Base ORM
 Base = declarative_base()
@@ -659,20 +664,6 @@ class Insee_year_death_origine_prenom(Base):
     )
 
 
-# Définition de la table
-# class Insee_naissance_death(Base):
-#    __tablename__ = 'insee_naissance_death'
-#    annee = Column(String(4), comment = "2ieme elément de la clé : annee de deces", nullable = False)
-#    num_insee_naissance = Column(String(5), comment="1er elément de la clé : Num insee de la ville de naissance", nullable = False)
-#    num_insee_death     = Column(String(5), comment="1er elément de la clé : Num insee de la ville de deces", nullable = False)
-
-#    nb_deces = Column(Integer, comment = "Nombre de deces né et mort dans ces villes")
-# Définition de la clé primaire composite
-#    __table_args__ = (
-#        PrimaryKeyConstraint('annee', 'num_insee_naissance', 'num_insee_deces'),
-#         {"comment": "Table recuperant les couples naissance/deces"}
-#    )
-
 # Création de la table dans la base
 Base.metadata.create_all(engine)
 
@@ -682,4 +673,4 @@ chargement_df_en_sql(engine, all_df, "insee_year_death_origine_prenom")
 
 # Correct pour vider/fermer le pool de connexions
 engine.dispose()
-print("Pool de connexion fermé")
+print("Fin TRT")

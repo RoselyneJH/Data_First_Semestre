@@ -42,6 +42,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
 
+from Connexion_Bdd import ConnexionBdd
+
 # On recharge la table death_people et également le nom de tous les fichiers
 # deces depuis 30 ans en Bdd
 ETAT_BDD = "NON_CHARGE"  # "DEJA_CHARGE" # "NON_CHARGE"
@@ -332,7 +334,7 @@ def traitement_validation(chemin_w: str, an: str) -> Tuple:
     start = time.time()
 
     fichier_complet = os.path.join(chemin_w, "fichier_deces.txt")
-    print("-------->  chemin_w", fichier_complet)
+    #print("-------->  chemin_w", fichier_complet)
 
     # Ouverture du fichier  attention, il faut choisir un encoding latin1, pas de separateur car certains
     # fichiers comportent plusieurs virgules et/ou tabulations + un warn sur les lignes incorrectes
@@ -545,7 +547,7 @@ def verification_date(df: pd.DataFrame, an: str) -> pd.DataFrame:
 
     return df_date_naiss_et_deces_ok_clean
 
-
+'''
 def configuration_db(
     chemin_w: str, filename: str = "Fichier_Connexion.ini", section: str = "postgresql"
 ) -> Dict[str, str]:
@@ -577,7 +579,7 @@ def configuration_db(
         raise Exception("Section {0} not found in {1}".format(section, filename))
 
     return db
-
+'''
 
 def prepare_dataframe_for_sql(df: pd.DataFrame, drop_columns=None) -> pd.DataFrame:
     """
@@ -844,7 +846,7 @@ def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
 
     return df
 
-
+'''
 def creation_de_chaine_de_connexion(chemin_w: str) -> str:
     """
     Creation de la chaine de connexion
@@ -870,7 +872,7 @@ def creation_de_chaine_de_connexion(chemin_w: str) -> str:
     #  Créer l'URL SQLAlchemy
     url = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{database}"
     return url
-
+'''
 
 def get_row_with_fallback(engine: Engine, an: str) -> pd.DataFrame:
     """
@@ -906,7 +908,7 @@ def get_row_with_fallback(engine: Engine, an: str) -> pd.DataFrame:
     return None, an
 
 
-def select_query_annee(chemin_w: str, an: str = "") -> pd.DataFrame:
+def select_query_annee(url_Bdd: str, an: str = "") -> pd.DataFrame:
     """
     Create une requete afin de recuperer l'url_name en fonction de l'année
 
@@ -924,7 +926,8 @@ def select_query_annee(chemin_w: str, an: str = "") -> pd.DataFrame:
 
     """
     # Créer le moteur SQLAlchemy
-    engine = create_engine(creation_de_chaine_de_connexion(chemin_w))
+    # avant : engine = create_engine(creation_de_chaine_de_connexion(chemin_w))
+    engine = create_engine(url_Bdd)
     #
     # with engine.connect() as conn:
     df, an = get_row_with_fallback(engine, an)
@@ -936,12 +939,14 @@ def select_query_annee(chemin_w: str, an: str = "") -> pd.DataFrame:
 
 # Fonction qui permet d'enchainer les traitements de validation du fichier des personnes decedées
 def telechargement_fichier_personne_decedee_selon_annee(
-    chemin_w: str, base_dir: str, an: str
+    url_Bdd: str, base_dir: str, an: str
 ) -> pd.DataFrame:
     """
     Permet un téléchargement du fichier des personnes decedees de l'année selectionnée.
 
     Args:
+        url Bdd
+
 
         année selectionée
 
@@ -963,7 +968,7 @@ def telechargement_fichier_personne_decedee_selon_annee(
 
     """
     # Download file
-    les_urls, an = select_query_annee(chemin_w, an)
+    les_urls, an = select_query_annee(url_Bdd, an)
 
     resultat = les_urls.loc[les_urls["annee_file"] == an, "url_file"]
 
@@ -991,7 +996,7 @@ def telechargement_fichier_personne_decedee_selon_annee(
 
         print("Fichier téléchargé avec succès.")
         logger.info(f"Fichier ({an}) téléchargé avec succès.")
-        print("---------> fichier base", base_dir)
+        # print("---------> fichier base", base_dir)
         df, errors = traitement_validation(base_dir, an)
 
         df_clean = verification_date(df, an)
@@ -1055,11 +1060,11 @@ def telechargement_fichier_personne_decedee_selon_annee(
     return df_clean
 
 
-def creer_base_et_table_personne_decedee(chemin_w: str, df_clean: pd.DataFrame) -> None:
+def creer_base_et_table_personne_decedee(chemin_w: str, url_Bdd: str, df_clean: pd.DataFrame) -> None:
     """
     Args:
 
-        Chemin de travail
+        Url de la base de données
 
         Dataframe des personnes à charger en base
 
@@ -1069,7 +1074,8 @@ def creer_base_et_table_personne_decedee(chemin_w: str, df_clean: pd.DataFrame) 
 
     """
     # Création du moteur SQLAlchemy - Crée le moteur de connexion à PostgreSQL (via psycopg)
-    engine = create_engine(creation_de_chaine_de_connexion(chemin_w))
+    engine = create_engine(url_Bdd)
+    
 
     # Déclaration de la base ORM
     Base = declarative_base()
@@ -1144,7 +1150,7 @@ def creer_base_et_table_personne_decedee(chemin_w: str, df_clean: pd.DataFrame) 
     # Correct pour vider/fermer le pool de connexions
     engine.dispose()
 
-
+'''
 # NEW
 def chemin_de_travail() -> str:
     """
@@ -1161,7 +1167,7 @@ def chemin_de_travail() -> str:
     """
     PATH_RACINE, PATH_LOG = gestion_path_ini()
     return PATH_RACINE
-
+'''
 
 ## -------------------------------------------------------------------------##
 #                                  MAIN
@@ -1171,6 +1177,13 @@ if __name__ == "__main__":
     # Path
     PATH_RACINE, PATH_LOG, BASE_DIR = gestion_path_ini()
 
+    # Instancier la classe d'accès à la base de données
+    my_bdd = ConnexionBdd(
+        path_racine=PATH_RACINE, filename="Fichier_Connexion.ini", section="postgresql"
+    )
+    # Creation de l'Url
+    url_Bdd = my_bdd.creation_de_chaine_de_connexion()
+    
     if ETAT_BDD == "NON_CHARGE":
         # Configurer loguru
         logger.add(
@@ -1197,7 +1210,7 @@ if __name__ == "__main__":
         # -------------- 2. Chargement des données en Bdd   ---------------------------
 
         # Créer le moteur SQLAlchemy
-        engine = create_engine(creation_de_chaine_de_connexion())
+        engine = create_engine(url_Bdd)
 
         # Create Metadata object
         metadata = MetaData()
@@ -1244,15 +1257,15 @@ if __name__ == "__main__":
 
     # ---- 3. Lecture de la Bdd puis recuperation du fichier deces pour parsing --
 
-    an = "2009"
+    an = "2024"
 
     # Telechargement du fichier :
     df_clean = telechargement_fichier_personne_decedee_selon_annee(
-        PATH_RACINE, BASE_DIR, an
+        url_Bdd, BASE_DIR, an
     )
 
-    # Crée le moteur de connexion à PostgreSQL (via psycopg)
-    engine = create_engine(creation_de_chaine_de_connexion())
+    # avant engine = create_engine(creation_de_chaine_de_connexion())
+    engine = create_engine(url_Bdd)
 
     # Base ORM
     Base = declarative_base()
