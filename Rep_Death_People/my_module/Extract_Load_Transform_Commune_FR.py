@@ -736,7 +736,7 @@ def chargement_dwh(
         nom_departement = Column(String(30), nullable=False)
         code_region = Column(String(2))
         nom_region = Column(String(30), nullable=False)
-        __table_args__ = (CheckConstraint("LENGTH(code) = 5", name="num_insee"),)
+        # __table_args__ = (CheckConstraint("LENGTH(code) = 5", name="num_insee"),)
         # ajout d'une contrainte
 
     class Commune_mvt(Base):

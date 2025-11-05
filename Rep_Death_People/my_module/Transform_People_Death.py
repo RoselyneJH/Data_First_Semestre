@@ -4,6 +4,8 @@
 
 from Extract_Load_People_death_FR import (
     telechargement_fichier_personne_decedee_selon_annee,
+    existence_bdd_dictionnaire_fichiers_personne_decedee,
+    creation_bdd_dictionnaire_fichiers_personne_decedee,
 )
 from Extract_Load_People_death_FR import creer_base_et_table_personne_decedee
 
@@ -379,7 +381,7 @@ def ajout_distance_classe_age_origine(df_clean_: pd.DataFrame) -> pd.DataFrame:
         .agg(nb_origine_region=("idligne", "count"))
     )
 
-    # Recuperation du nombre de morte
+    # Recuperation du nombre de mort
     df_clean_nb_woman = (
         df_clean[df_clean["sexe"] == "Woman"]
         .groupby(["annee", "num_insee_deces"], as_index=False)
@@ -508,8 +510,22 @@ section = "postgresql"
 # Creation de l'Url
 url_Bdd = my_bdd.creation_de_chaine_de_connexion()
 
+#engine = create_engine(creation_de_chaine_de_connexion())
+engine = create_engine(url_Bdd)
+
+# Existence du dictionnaire ? Sinon creation du dictionnaire
+if not existence_bdd_dictionnaire_fichiers_personne_decedee(engine, "nom_url"):
+    creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd)
+
 # ----
-dans_la_liste = ["2024" ]
+dans_la_liste = ["1991",
+    "1996",
+    "2001",
+    "2006",
+    "2011",
+    "2016",
+    "2021",
+    "2024" ]
 '''
 dans_la_liste = [
     "2005",
@@ -546,6 +562,7 @@ for une_annee in dans_la_liste:
     creer_base_et_table_personne_decedee(PATH_RACINE, url_Bdd, le_df)
 
     #engine = create_engine(creation_de_chaine_de_connexion())
+    print("engine ?")
     engine = create_engine(url_Bdd)
 
     # Possible d'éviter l'itération des colonnes via information_schema de PostgreSQl

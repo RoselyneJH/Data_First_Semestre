@@ -17,10 +17,13 @@ from pydantic import BaseModel, Field, ValidationError, constr
 from typing import List, Literal
 from typing import List, Dict, Union, Tuple, Literal
 
-# pd.options.mode.chained_assignment = None
-# pd.set_option("display.max_colwidth", None)
+# Vérification des types automatiquement : l’outil mypy
+# pip install mypy
+# mypy mon_script.py
 
 from configparser import ConfigParser
+
+# import mapply
 
 from sqlalchemy import (
     create_engine,
@@ -47,6 +50,9 @@ from Connexion_Bdd import ConnexionBdd
 # On recharge la table death_people et également le nom de tous les fichiers
 # deces depuis 30 ans en Bdd
 ETAT_BDD = "NON_CHARGE"  # "DEJA_CHARGE" # "NON_CHARGE"
+
+# Initialisation une seule fois,j'essaye d'améliorer les perfs
+# mapply.init()
 
 ## -------------------------------------------------------------------------##
 #                                  FONCTIONS
@@ -802,7 +808,7 @@ def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
 
     Args:
 
-        Le nom du site
+        Le document html du site au format text
 
     Returns:
 
@@ -815,7 +821,6 @@ def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
     # Étape 2 : Récupérer les noms fichier et urls correspondant
     links_url = []
     links_file_name = []
-    # links_periodicite_non_annuel=[]
 
     for line in html_text.splitlines():  # html_text
         if item_file in line and item_dece in line:
@@ -989,7 +994,7 @@ def telechargement_fichier_personne_decedee_selon_annee(
     try:
         response = requests.get(url)
         response.raise_for_status()  # Vérifie si la réponse est OK (code 200)
-        print("--------> avant open fichier", an)
+        # print("--------> avant open fichier", an)
         # Sauvegarder le fichier si la requête est réussie
         with open("fichier_deces.txt", "wb") as f:
             f.write(response.content)
@@ -1074,8 +1079,7 @@ def creer_base_et_table_personne_decedee(chemin_w: str, url_Bdd: str, df_clean: 
 
     """
     # Création du moteur SQLAlchemy - Crée le moteur de connexion à PostgreSQL (via psycopg)
-    engine = create_engine(url_Bdd)
-    
+    engine = create_engine(url_Bdd)    
 
     # Déclaration de la base ORM
     Base = declarative_base()
@@ -1150,6 +1154,108 @@ def creer_base_et_table_personne_decedee(chemin_w: str, url_Bdd: str, df_clean: 
     # Correct pour vider/fermer le pool de connexions
     engine.dispose()
 
+def existence_bdd_dictionnaire_fichiers_personne_decedee(engine, table_name: str, 
+                                                    schema_name: str ="public") -> bool:
+    """Vérifie si une table existe dans PostgreSQL.
+    Args:
+
+        Moteur de connexion à bdd
+
+        schema bdd
+
+        nom de la table des dictionnaires de fichiers de personnes decedees
+
+    Return:
+
+        boolean true = existence, false sinon
+    """
+    if len(table_name) > 0:
+        with engine.connect() as conn:
+        # Accéder au cursor du DBAPI
+           # with connection.connection.cursor() as cur
+            with conn.connection.cursor() as cur:
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT 1 
+                        FROM information_schema.tables 
+                        WHERE table_schema = %s 
+                        AND table_name = %s
+                    );
+                """, (schema_name, table_name))
+                return cur.fetchone()[0]  # True ou False
+    else:
+        return False
+
+def creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd: str) -> None:
+    '''
+    Permet de créer la table nom_url avec les noms de fichiers des 
+    personnes decedees
+      
+    Args:
+
+        Url de la base de données
+
+    Return:
+
+        None
+    '''
+    # --------------- 1. Récupération des noms URL pers. decedee ------------------
+    URL_PERSONNE_DECEDEE = (
+        "https://www.data.gouv.fr/fr/datasets/fichier-des-personnes-decedees/"
+    )
+    response = requests.get(URL_PERSONNE_DECEDEE)
+    html_text = response.text
+    df_url_a_copier = recuperer_df_name_and_url(html_text)
+
+    df_url_a_copier["idligne"] = df_url_a_copier.index.to_list()
+    df_url = df_url_a_copier[["idligne", "annee_file", "url_file"]].copy()
+
+    # -------------- 2. Chargement des données en Bdd   ---------------------------
+
+    # Créer le moteur SQLAlchemy
+    engine = create_engine(url_Bdd)
+
+    # Create Metadata object
+    metadata = MetaData()
+
+    # Définition de la table fact
+    nom_url = Table(
+        "nom_url",
+        metadata,
+        Column("idligne", Integer, primary_key=True),
+        Column("annee_file", String, nullable=False),
+        Column("url_file", String, nullable=False),
+    )
+
+    # Supprimer l’ancienne table si elle existe
+    with engine.connect() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS nom_url"))
+        print("Table Supprimée")
+
+    # Création de la table dans la base
+    metadata.create_all(engine)
+
+    print("Table 'nom_url' créée avec succès !")
+
+    # Envoi dans PostgreSQL
+    df_clean_sql = prepare_dataframe_for_sql(df_url)
+
+    df_clean_sql.to_sql(
+        name="nom_url",  # nom de la table
+        con=engine,  # moteur SQLAlchemy
+        if_exists="replace",  # 'replace' = supprime et recrée, 'append' = ajoute
+        index=False,  # ne pas écrire l'index comme une colonne
+    )
+
+    # logger.info(
+    #     f"Chargement dans le DWH de Table nom_url {df_clean_sql.shape[0]:,}".replace(
+    #         ",", " "
+    #     )
+    # )
+    print("Données insérées depuis le DataFrame dans la table PostgreSQL")
+
+    engine.dispose()
+
 '''
 # NEW
 def chemin_de_travail() -> str:
@@ -1192,10 +1298,13 @@ if __name__ == "__main__":
         #
         logger.info("DEBUT TRT")
 
+        creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd)
+        
+        '''
         # -------------- 1. Telechargement de fichiers de personnes decedees (1 /an) ----
         # Il existe une trentaine de fichier.
         # L'objectif ici est de charger leur nom+année dans notre DWH.
-
+        
         # ----------------------------------------------------------------------------
         URL_PERSONNE_DECEDEE = (
             "https://www.data.gouv.fr/fr/datasets/fichier-des-personnes-decedees/"
@@ -1252,7 +1361,7 @@ if __name__ == "__main__":
         print("Données insérées depuis le DataFrame dans la table PostgreSQL")
 
         engine.dispose()
-
+        '''
         ETAT_BDD = "DEJA_CHARGE"
 
     # ---- 3. Lecture de la Bdd puis recuperation du fichier deces pour parsing --
