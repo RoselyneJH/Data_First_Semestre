@@ -39,7 +39,7 @@ import polars as pl
 ##############################################################################
 
 
-class TransformationDataPourViz:
+class ClsLoadDataPourViz:
     def __init__(self, path_racine: str):
         """
         Initialise une transformation des personnes decedées
@@ -102,13 +102,6 @@ class TransformationDataPourViz:
 
         return df_clean
 
-    # def selection_zone(self, df : pd.DataFrame, la_zone : str = 'R', le_champ : str) -> pd.DataFrame:
-    #    '''
-    #    '''
-    #    if la_zone == 'R':
-    #        df.groupby(['la_zone']).agg(lat = ('le_champ_lat','mean'))
-    #
-    #    return df
 
     def ajout_distance_classe_age_origine(
         self, df_clean_: pd.DataFrame

@@ -340,7 +340,7 @@ def traitement_validation(chemin_w: str, an: str) -> Tuple:
     start = time.time()
 
     fichier_complet = os.path.join(chemin_w, "fichier_deces.txt")
-    #print("-------->  chemin_w", fichier_complet)
+    # print("-------->  chemin_w", fichier_complet)
 
     # Ouverture du fichier  attention, il faut choisir un encoding latin1, pas de separateur car certains
     # fichiers comportent plusieurs virgules et/ou tabulations + un warn sur les lignes incorrectes
@@ -553,6 +553,7 @@ def verification_date(df: pd.DataFrame, an: str) -> pd.DataFrame:
 
     return df_date_naiss_et_deces_ok_clean
 
+
 '''
 def configuration_db(
     chemin_w: str, filename: str = "Fichier_Connexion.ini", section: str = "postgresql"
@@ -586,6 +587,7 @@ def configuration_db(
 
     return db
 '''
+
 
 def prepare_dataframe_for_sql(df: pd.DataFrame, drop_columns=None) -> pd.DataFrame:
     """
@@ -851,6 +853,7 @@ def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
 
     return df
 
+
 '''
 def creation_de_chaine_de_connexion(chemin_w: str) -> str:
     """
@@ -878,6 +881,7 @@ def creation_de_chaine_de_connexion(chemin_w: str) -> str:
     url = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{database}"
     return url
 '''
+
 
 def get_row_with_fallback(engine: Engine, an: str) -> pd.DataFrame:
     """
@@ -1065,7 +1069,9 @@ def telechargement_fichier_personne_decedee_selon_annee(
     return df_clean
 
 
-def creer_base_et_table_personne_decedee(chemin_w: str, url_Bdd: str, df_clean: pd.DataFrame) -> None:
+def creer_base_et_table_personne_decedee(
+    chemin_w: str, url_Bdd: str, df_clean: pd.DataFrame
+) -> None:
     """
     Args:
 
@@ -1079,7 +1085,7 @@ def creer_base_et_table_personne_decedee(chemin_w: str, url_Bdd: str, df_clean: 
 
     """
     # Création du moteur SQLAlchemy - Crée le moteur de connexion à PostgreSQL (via psycopg)
-    engine = create_engine(url_Bdd)    
+    engine = create_engine(url_Bdd)
 
     # Déclaration de la base ORM
     Base = declarative_base()
@@ -1154,8 +1160,10 @@ def creer_base_et_table_personne_decedee(chemin_w: str, url_Bdd: str, df_clean: 
     # Correct pour vider/fermer le pool de connexions
     engine.dispose()
 
-def existence_bdd_dictionnaire_fichiers_personne_decedee(engine, table_name: str, 
-                                                    schema_name: str ="public") -> bool:
+
+def existence_bdd_dictionnaire_fichiers_personne_decedee(
+    engine, table_name: str, schema_name: str = "public"
+) -> bool:
     """Vérifie si une table existe dans PostgreSQL.
     Args:
 
@@ -1171,26 +1179,30 @@ def existence_bdd_dictionnaire_fichiers_personne_decedee(engine, table_name: str
     """
     if len(table_name) > 0:
         with engine.connect() as conn:
-        # Accéder au cursor du DBAPI
-           # with connection.connection.cursor() as cur
+            # Accéder au cursor du DBAPI
+            # with connection.connection.cursor() as cur
             with conn.connection.cursor() as cur:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT EXISTS (
                         SELECT 1 
                         FROM information_schema.tables 
                         WHERE table_schema = %s 
                         AND table_name = %s
                     );
-                """, (schema_name, table_name))
+                """,
+                    (schema_name, table_name),
+                )
                 return cur.fetchone()[0]  # True ou False
     else:
         return False
 
+
 def creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd: str) -> None:
-    '''
-    Permet de créer la table nom_url avec les noms de fichiers des 
+    """
+    Permet de créer la table nom_url avec les noms de fichiers des
     personnes decedees
-      
+
     Args:
 
         Url de la base de données
@@ -1198,7 +1210,7 @@ def creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd: str) -> None:
     Return:
 
         None
-    '''
+    """
     # --------------- 1. Récupération des noms URL pers. decedee ------------------
     URL_PERSONNE_DECEDEE = (
         "https://www.data.gouv.fr/fr/datasets/fichier-des-personnes-decedees/"
@@ -1256,6 +1268,7 @@ def creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd: str) -> None:
 
     engine.dispose()
 
+
 '''
 # NEW
 def chemin_de_travail() -> str:
@@ -1289,7 +1302,7 @@ if __name__ == "__main__":
     )
     # Creation de l'Url
     url_Bdd = my_bdd.creation_de_chaine_de_connexion()
-    
+
     if ETAT_BDD == "NON_CHARGE":
         # Configurer loguru
         logger.add(
@@ -1299,8 +1312,8 @@ if __name__ == "__main__":
         logger.info("DEBUT TRT")
 
         creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd)
-        
-        '''
+
+        """
         # -------------- 1. Telechargement de fichiers de personnes decedees (1 /an) ----
         # Il existe une trentaine de fichier.
         # L'objectif ici est de charger leur nom+année dans notre DWH.
@@ -1361,7 +1374,7 @@ if __name__ == "__main__":
         print("Données insérées depuis le DataFrame dans la table PostgreSQL")
 
         engine.dispose()
-        '''
+        """
         ETAT_BDD = "DEJA_CHARGE"
 
     # ---- 3. Lecture de la Bdd puis recuperation du fichier deces pour parsing --

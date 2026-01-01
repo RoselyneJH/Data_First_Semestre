@@ -42,6 +42,7 @@ import os
 
 from Connexion_Bdd import ConnexionBdd
 
+
 ## -------------------------------------------------------------------------##
 #                                  FONCTIONS
 ## -------------------------------------------------------------------------##
@@ -72,6 +73,7 @@ def gestion_path_ini() -> str:
     log_path = os.path.normpath(os.path.join(base_dir, "..", "my_log"))
 
     return racine_projet, log_path, base_dir
+
 
 '''
 def configuration_db(
@@ -171,6 +173,7 @@ def select_death_people() -> pd.DataFrame:
 
     return df
 '''
+
 
 def haversine_np(
     lat1: np.ndarray, lon1: np.ndarray, lat2: np.ndarray, lon2: np.ndarray
@@ -504,13 +507,13 @@ def ajout_distance_classe_age_origine(df_clean_: pd.DataFrame) -> pd.DataFrame:
 PATH_RACINE, PATH_LOG, BASE_DIR = gestion_path_ini()
 
 # Instancier la classe d'accès à la base de données
-my_bdd = ConnexionBdd(path_racine = PATH_RACINE, filename = "Fichier_Connexion.ini", 
-section = "postgresql" 
+my_bdd = ConnexionBdd(
+    path_racine=PATH_RACINE, filename="Fichier_Connexion.ini", section="postgresql"
 )
 # Creation de l'Url
 url_Bdd = my_bdd.creation_de_chaine_de_connexion()
 
-#engine = create_engine(creation_de_chaine_de_connexion())
+# engine = create_engine(creation_de_chaine_de_connexion())
 engine = create_engine(url_Bdd)
 
 # Existence du dictionnaire ? Sinon creation du dictionnaire
@@ -518,15 +521,8 @@ if not existence_bdd_dictionnaire_fichiers_personne_decedee(engine, "nom_url"):
     creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd)
 
 # ----
-dans_la_liste = ["1991",
-    "1996",
-    "2001",
-    "2006",
-    "2011",
-    "2016",
-    "2021",
-    "2024" ]
-'''
+dans_la_liste = ["1991", "1996", "2001", "2006", "2011", "2016", "2021", "2024"]
+"""
 dans_la_liste = [
     "2005",
     "2006",
@@ -549,7 +545,7 @@ dans_la_liste = [
     "2023",
     "2024",
 ]
-'''
+"""
 # init dataframe
 all_df = pd.DataFrame()
 #
@@ -561,7 +557,7 @@ for une_annee in dans_la_liste:
 
     creer_base_et_table_personne_decedee(PATH_RACINE, url_Bdd, le_df)
 
-    #engine = create_engine(creation_de_chaine_de_connexion())
+    # engine = create_engine(creation_de_chaine_de_connexion())
     print("engine ?")
     engine = create_engine(url_Bdd)
 
