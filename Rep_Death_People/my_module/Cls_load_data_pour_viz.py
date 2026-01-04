@@ -31,7 +31,8 @@ import matplotlib.ticker as ticker
 
 from functools import reduce
 
-from Connexion_Bdd import ConnexionBdd
+from my_module.Connexion_Bdd import ConnexionBdd
+
 import polars as pl
 
 ##############################################################################
@@ -101,7 +102,6 @@ class ClsLoadDataPourViz:
         )
 
         return df_clean
-
 
     def ajout_distance_classe_age_origine(
         self, df_clean_: pd.DataFrame
@@ -302,6 +302,10 @@ class ClsLoadDataPourViz:
             "%b"
         )  # # month_name()
         df_clean["day_deces"] = df_clean["date_deces_dt"].dt.day
+
+        # origine nationale
+        df_clean['origine_nationale'] = 'N'
+        df_clean.loc[df_clean["pays_naissance"] == "FRANCE", "origine_nationale"] = "O"
 
         return df_clean
 
