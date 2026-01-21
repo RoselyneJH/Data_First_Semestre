@@ -73,7 +73,7 @@ def load_dataframe()-> pd.DataFrame:
     
     # ---  Recupération de mes données via la classe ---
     my_class = ClsLoadDataPourViz(
-        path_racine= str(Path.cwd()) # r"C:\Users\chokr\Data Projet\Death_People\Rep_Death_People"
+        path_racine= str(Path.cwd()) 
     )
 
     df_person_nais_dece_departement_region = (
