@@ -13,6 +13,8 @@ from streamlit_plotly_events import plotly_events
 import polars as pl
 import numpy as np
 
+
+from pathlib import Path
 from my_module.graphs.graph_bar_origine import render_graph_bar_origine as graph_bar_origine
 
 from my_module.graphs.graph_bar_month import render_graph_bar_month as graph_bar_month
@@ -23,12 +25,15 @@ from my_module.graphs.graph_heat_map import (
     render_graph_heat_map_origine as graph_heat_map_origine,
 )
 
+from my_module.graphs.graph_scoring import (
+    render_graph_score as graph_scoring,
+)
+
 # -------------------------------------------------------------------------------------
 
 # Permet de reduire la marge entre side bar et reste de l'écran
 # A définir, en premier dans une app. streamlit
 st.set_page_config(layout="wide")
-
 
 # --- Fonction pour charger des fichiers GeoJSON ---
 @st.cache_data
@@ -50,6 +55,7 @@ def load_geojsons():
     ).json()
     return geojson_regions, geojson_departements
 
+# Fonction pour préparer le cumul
 
 # --- Fonction pour récupérer data ---
 @st.cache_data
@@ -64,9 +70,10 @@ def load_dataframe()-> pd.DataFrame:
             - dataframe standard sans agregation selon kpi
             - dataframe avec rang des kpis selon secteur
     """
+    
     # ---  Recupération de mes données via la classe ---
     my_class = ClsLoadDataPourViz(
-        path_racine=r"C:\Users\chokr\Data Projet\Death_People\Rep_Death_People"
+        path_racine= str(Path.cwd()) # r"C:\Users\chokr\Data Projet\Death_People\Rep_Death_People"
     )
 
     df_person_nais_dece_departement_region = (
@@ -74,8 +81,6 @@ def load_dataframe()-> pd.DataFrame:
     )
 
     df = my_class.creation_classe_age(df_person_nais_dece_departement_region)
-
-    print("df.info ---------",df.info())
 
     mon_pl = pl.DataFrame(df)
     df_polars = (
@@ -147,6 +152,8 @@ def recherche_dominant_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
     distance_moy = distance_moy +"km"
     
     return age_moyen, serie_sex, serie_prenom, serie_lieu_naissance, serie_lieu_deces, origine_dominante, distance_moy
+
+
 
 # Récupération des regions et départements
 geojson_regions, geojson_departements = load_geojsons()
@@ -319,7 +326,7 @@ if restitution_des_valeurs:
     if ville_selected != "Toutes les villes":
         df_list = df_final.query("ville_deces == @ville_selected")
         # ➜ chaque ligne renvoie un cumul de personnes decedées
-        df_map = df_list.groupby(  # df_final.query("ville_deces == @ville_selected")
+        df_map = df_list.groupby(   
             ["ville_deces"], as_index=False
         ).agg({"lat": "mean", "lon": "mean", "nb_deces": "sum"})
 
@@ -336,24 +343,24 @@ if restitution_des_valeurs:
 
         # ****** BarPlot2 *****
         df_bar_cl = (
-            df_final.query("ville_deces == @ville_selected")  #df_fnl.query("ville_deces == @ville_selected")
+            df_final.query("ville_deces == @ville_selected")  
             .groupby(
                 ["ville_deces", "classe_age", "origine_ville"],
                 as_index=False,
                 observed=True,
             )
             .agg(
-                nb_deces=("nb_deces", "sum"), #nb_deces=("idligne", "count"),
+                nb_deces=("nb_deces", "sum"), 
             )
         )
         origine_secteur = "origine_ville"
 
         # ****** BarPlot3 *****
         df_bar_month = (
-            df_final.query("ville_deces == @ville_selected")  #df_fnl.query("ville_deces == @ville_selected")
+            df_final.query("ville_deces == @ville_selected")  
             .groupby(["month_deces", "origine_ville"], as_index=False, observed=True)
             .agg(
-                nb_deces=("nb_deces", "sum"), #nb_deces=("idligne", "count"),
+                nb_deces=("nb_deces", "sum"),  
             )
         )
 
@@ -376,7 +383,7 @@ if restitution_des_valeurs:
         # ➜ regroupement par ville
         df_list = df_final.query("nom_departement_deces == @departement_selected")
         df_map = (
-            df_list.groupby(  # df_final.query("nom_departement_deces == @departement_selected")
+            df_list.groupby(  
                 ["nom_departement_deces", "ville_deces"]
             )
             .agg({"lat": "mean", "lon": "mean", "nb_deces": "sum"})
@@ -387,11 +394,11 @@ if restitution_des_valeurs:
         size_col = "count"
 
         # ****** BarPlot *****
-        df_bar = df_list.groupby(  # df_final.query("nom_departement_deces == @departement_selected")
+        df_bar = df_list.groupby(  
             ["ville_deces", "origine_departement"], as_index=False
         ).agg(
             nb_deces=("nb_deces", "sum"),
-            # nb_originaire_ville=("nb_originaire_ville", "sum"),
+            
         )
 
         df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
@@ -399,26 +406,26 @@ if restitution_des_valeurs:
 
         # ****** BarPlot2 *****
         df_bar_cl = (
-            df_final.query("nom_departement_deces == @departement_selected")  #df_fnl.query("nom_departement_deces == @departement_selected")
+            df_final.query("nom_departement_deces == @departement_selected")  
             .groupby(
                 ["ville_deces", "classe_age", "origine_departement"],
                 as_index=False,
                 observed=True,
             )
             .agg(
-                nb_deces=("nb_deces", "sum"), #nb_deces=("idligne", "count"),
+                nb_deces=("nb_deces", "sum"), 
             )
         )
         origine_secteur = "origine_departement"
 
         # ****** BarPlot3 *****
         df_bar_month = (
-            df_final.query("nom_departement_deces == @departement_selected")  #df_fnl.query("nom_departement_deces == @departement_selected")
+            df_final.query("nom_departement_deces == @departement_selected")  
             .groupby(
                 ["month_deces", "origine_departement"], as_index=False, observed=True
             )
             .agg(
-                nb_deces=("nb_deces", "sum"), #nb_deces=("idligne", "count"),
+                nb_deces=("nb_deces", "sum"),  
             )
         )
 
@@ -446,7 +453,7 @@ if restitution_des_valeurs:
         # ➜ regroupement par département
         df_list = df_final.query("nom_region_deces == @region_selected")
         df_map = (
-            df_list.groupby(  # df_final.query("nom_region_deces == @region_selected")
+            df_list.groupby(  
                 ["nom_region_deces", "nom_departement_deces"]
             )
             .agg({"lat": "mean", "lon": "mean", "nb_deces": "sum"})
@@ -460,8 +467,7 @@ if restitution_des_valeurs:
         df_bar = df_list.groupby(
             ["nom_departement_deces", "origine_departement"], as_index=False
         ).agg(
-            nb_deces=("nb_deces", "sum"),
-            # nb_originaire_departement=("nb_originaire_departement", "sum"),
+            nb_deces=("nb_deces", "sum"),             
         )
 
         df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
@@ -470,26 +476,26 @@ if restitution_des_valeurs:
 
         # ****** BarPlot2 *****
         df_bar_cl = (
-            df_final.query("nom_region_deces == @region_selected") #df_fnl.query("nom_region_deces == @region_selected")
+            df_final.query("nom_region_deces == @region_selected") 
             .groupby(
                 ["nom_departement_deces", "classe_age", "origine_departement"],
                 as_index=False,
                 observed=True,
             )
             .agg(
-                nb_deces=("nb_deces", "sum"), #nb_deces=("idligne", "count"),
+                nb_deces=("nb_deces", "sum"),  
             )
         )
         origine_secteur = "origine_departement"
 
         # ****** BarPlot3 *****
         df_bar_month = (
-            df_final.query("nom_region_deces == @region_selected") #df_fnl.query("nom_region_deces == @region_selected")
+            df_final.query("nom_region_deces == @region_selected") 
             .groupby(
                 ["month_deces", "origine_departement"], as_index=False, observed=True
             )
             .agg(
-                nb_deces=("nb_deces", "sum"), # nb_deces=("idligne", "count"),
+                nb_deces=("nb_deces", "sum"),  
             )
         )
         # ****** BarPlot Test *****
@@ -528,29 +534,28 @@ if restitution_des_valeurs:
         df_bar = df_final.groupby(
             ["nom_region_deces", "origine_nationale"], as_index=False
         ).agg(
-            nb_deces=("nb_deces", "sum"),
-            # nb_originaire_region=("nb_originaire_region", "sum"),
+            nb_deces=("nb_deces", "sum"),            
         )
 
         df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
 
-        nom_secteur = "nom_region_deces"
+        nom_secteur = "nom_region_deces" 
 
-        # ****** BarPlot2 *****   , observed=False ,"origine_region"
-        df_bar_cl = df_final.groupby( #df_fnl.groupby(
+        # ****** BarPlot2 *****    
+        df_bar_cl = df_final.groupby(  
             ["nom_region_deces", "classe_age", "origine_nationale"],
             as_index=False,
             observed=True,
         ).agg(
-            nb_deces=("nb_deces", "sum"), # nb_deces=("idligne", "count"),
+            nb_deces=("nb_deces", "sum"),  
         )
-        origine_secteur = "origine_nationale" #"origine_region"
+        origine_secteur = "origine_nationale"  
 
         # ****** BarPlot3 *****
-        df_bar_month = df_final.groupby( #df_fnl.groupby(
+        df_bar_month = df_final.groupby(  
             ["month_deces", "origine_nationale"], as_index=False, observed=True
         ).agg(
-            nb_deces=("nb_deces", "sum"), #nb_deces=("idligne", "count"),
+            nb_deces=("nb_deces", "sum"),  
         )
 
         # ****** BarPlot Test *****
@@ -610,34 +615,101 @@ if restitution_des_valeurs:
 
     # --- Affichage dans Streamlit ---
     st.sidebar.plotly_chart(fig, use_container_width=True)
+    
+    # --- Tabulations  ---
 
     (tabMain, tabAnalyse) = st.tabs(["📌Tableau de Bord","🔍 Analyse"])
+
     # -----------------------------
     # TAB 1
     # -----------------------------
     with tabMain:
+        with st.container(border=True):
+            if origine_secteur == 'origine_nationale':
+                st.subheader("Portrait moyen du défunt en France")
+            else:
+                st.subheader("Portrait moyen du défunt sur ce secteur")
 
-        st.subheader("Portrait moyen du décédé par secteur")
+            col_sex, col_age, col_pren, col_lieu_nai, col_lieu_dec, col_origine, col_dist = st.columns([1.2,
+                                    0.9, 2.6, 2.9,2.9, 1, 1.3])
 
-        col_age, col_sex, col_pren, col_lieu_nai, col_lieu_dec, col_origine, col_dist = st.columns([0.9, 
-                                                            0.6,2.3, 2.9,2.9, 1, 1.3])
-
-        age_moyen, serie_sex, serie_prenom, serie_lieu_naissance, serie_lieu_deces, origine_dominante, distance_moy = recherche_dominant_sur_secteur(
-                            df_fnl_m, nom_secteur, origine_secteur )
+            age_moyen, serie_sex, serie_prenom, serie_lieu_naissance, serie_lieu_deces, origine_dominante, distance_moy = recherche_dominant_sur_secteur(
+                                df_fnl_m, nom_secteur, origine_secteur )            
         
-        col_age.metric("Âge moy.", f"{age_moyen} ans")
-        col_sex.metric("Sexe ",serie_sex[0]) 
-        col_pren.metric("Prénom dominant", serie_prenom[0])
-        col_lieu_nai.metric("Secteur de naissance dominant",serie_lieu_naissance[0] )        
-        col_lieu_dec.metric("Secteur de décès dominant",serie_lieu_deces[0] )
-        col_origine.metric("Originaire",origine_dominante)
-        col_dist.metric("Distance moy.*",distance_moy)
+            col_age.metric("Âge moy.", f"{age_moyen} ans")
+            # Affichage des icônes SVG dans la colonne `col_sex`
+            with col_sex:
+                sex = "homme"  # Exemple: ici, tu pourrais avoir une condition qui choisit entre "homme" ou "femme"
+                
+                if serie_sex[0] == "H":
+                    st.image("assets/men.svg", width=120) # Affichage de l'icône homme
+                else:
+                    st.image("assets/women.svg", width=120)  # Affichage de l'icône femme
+            
+            col_pren.metric("Prénom dominant", serie_prenom[0])
+            col_lieu_nai.metric("Secteur de naissance dominant",serie_lieu_naissance[0] )        
+            col_lieu_dec.metric("Secteur de décès dominant",serie_lieu_deces[0] )
+            col_origine.metric("Originaire",origine_dominante)
+            col_dist.metric("Distance moy.*",distance_moy)
+            
+            st.caption("Distance moy.* = Distance moyenne entre le lieux de naissance et de décès.")
         
-        st.caption("Distance moy.* = Distance moyenne des originaires entre les lieux de décès et de naissance")
+        with st.container(border=True):
+            st.subheader("Scoring")
+            st.markdown(
+                """
+                <div style="background-color: #ADD8E6; ">
+                Les indicateurs présents dans ces graphes sont relatifs à la fin de vie.\n
+                📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir, 
+                au moment du décès, des personnes qui n'y sont pas nées.
+                Interprétation :<br>
+                <b>-</b> TAFV > 0.6 le secteur est très attractif en fin de vie.<br> 
+                <b>-</b> TAFV < 0.3 les décès sont majoritairement des locaux.\n 
+                📌L'indice de mobilité différentiel (IMD) mesure la mobilité entre originaires et non 
+                originaires d'un secteur.<br> 
+                <b>-</b> IMD > 1 les non originaires sont mobiles. <br>
+                <b>-</b> IMD < 1 les natifs sont plus mobiles.<br>
+                <b>-</b> IMD = 1 le comportement est assez proche.<br>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
+            fig_TAFV, fig_IMD = graph_scoring(df_fnl,nom_secteur,origine_secteur)
+            #df_score,distance_origine,nb_origine = score_secteur (df_fnl,nom_secteur,origine_secteur)
+            
+            #fig = px.scatter(
+            #    df_score,
+            #    x=distance_origine,
+            #    y=nb_origine,
+            #    color="IMD_nor",#"TAFV",
+            #    #size= "IMD_nor",#"TAFV",
+            #    hover_name=nom_secteur,
+            #    #color_continuous_scale=[
+            #    #    [0.0, "darkorange"],  # valeur basse  steelblue
+            #    #    [1.0, "steelblue"],
+            #    #], #"Viridis",
+            #    title="Taux d'Attractivité de Fin de Vie",
+            #    #labels={
+            #    #    "distance_moyenne_origine": "Distance moyenne originaires",
+            #    #    "nb_origine_nationale": "Nombre d'originaires",
+            #    #    "score": "Score"
+            #    #}
+            #)
+            #fig.update_layout(
+            #plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
+            #paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
+            #height=450,
+            #width=450,
+            #)
+            col1, col2 = st.columns([3.2, 3.1])
+            with col1:
+                with st.container(border=True):         
+                    st.plotly_chart(fig_TAFV, use_container_width=True,  key="Graphe_TAFV")
+            with col2:
+                with st.container(border=True):         
+                    st.plotly_chart(fig_IMD, use_container_width=True,  key="Graphe_IMD")
 
-        st.subheader("Caractéristiques sectorielles ")
-
-        st.dataframe(df_fnl_m)
+            st.dataframe(df_fnl)
 
     # -----------------------------
     # TAB 2
@@ -663,7 +735,7 @@ if restitution_des_valeurs:
         # Preparation de l'alignement des graphes
         # Colonnes côte à côte
         # Mettre un espace entre les différents conteneurs
-        col1, col2 = st.columns([3.2, 2.9])
+        col1, col2 = st.columns([3.2, 3.1])
         
         # creation du graphe
         la_fig, list_ordonnee_secteur_sans_dbl = graph_bar_origine(
@@ -783,42 +855,6 @@ if restitution_des_valeurs:
             # st.dataframe(df_final)
             st.dataframe(df_final)
 
-
-    # with col3:
-    #     with st.container(border=True):
-    #         st.plotly_chart(graph_heat_map_origine(df_bar_cl,nom_secteur,origine_secteur,
-    #                             list_ordonnee_secteur_sans_dbl,'N'),
-    #                             use_container_width=True,
-    #                             key="Clas_Age_Ori_N",
-    #                     )
-
-    # with st.container(border=True):
-    #    st.plotly_chart(graph_scatter_miroir(df_bar,nom_secteur,origine_secteur),
-    #                use_container_width=True,
-    #                key="test2")
-
-    # Création du bart chart 2
-    # fig = px.bar(
-    #    df_bar_cl,
-    #    y="classe_age",
-    #    x="nb_deces",
-    #    color=origine_secteur,
-    #    barmode="group",   # équivalent au hue de seaborn
-    #    orientation="h",
-    #    color_discrete_map={"N": "steelblue", "O": "darkorange"},
-    #    category_orders={"origine": ["N", "O"]},
-    #    # color_discrete_map={
-    #    #     "nb_deces": "steelblue",  # "#1f77b4",   # bleu  "skyblue"
-    #    #     "nb_originaire": "darkorange",  # "#ff7f0e",   # orange
-    #    # },
-    # )
-
-    # fig.update_layout(
-    #    title="Classe d'âge de la mortalité et origine",  # "Mortalité et originaires [total]",
-    #    xaxis=dict(title="Mortalité tous secteurs"),
-    #    yaxis=dict(title="Classe d'âge", side="left", showgrid=True),
-    #    plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
-    #    paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-    #    height=600,
-    #    width=400,
-    # )
+    #st.image("assets/logoWm1.svg", width=50)
+    
+    

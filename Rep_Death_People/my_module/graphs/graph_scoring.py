@@ -1,0 +1,159 @@
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
+import polars as pl
+
+def score_secteur(df:pd.DataFrame, ce_ss_secteur:str, cette_origine_:str)->pd.DataFrame:
+    '''
+        Args    : Dataframe à transformer
+                  sous_secteur à filtrer
+                  origine du sous secteur
+        Return  : Dataframe transformé
+        Process : Comptabilité liée par sous-secteurs sur deces exogènes,
+                  deces originaires, distance selon age
+                  Utilisation de Polars pour performance
+    '''
+    # Petite manip liée à un décallage des niveaux de secteur
+    le_string = ce_ss_secteur    
+    cette_origine_1 ="origine_"+le_string.replace("_deces","")
+    cette_origine =cette_origine_1.replace("_nom","")
+    
+    # item qui permet de préparer le filtre/groupby : paramétrage
+    nb_non_origine = "nb_non_origine_"+cette_origine.replace("origine_", "")
+    nb_origine = "nb_origine_"+cette_origine.replace("origine_", "")
+    
+    distance_non_origine = "distance_non_origine_"+cette_origine.replace("origine_", "")
+    distance_origine = "distance_origine_"+cette_origine.replace("origine_", "")
+    
+        
+    # liste des secteurs descendant afin de préparer le filtre 
+    liste_secteur = ['pays_naissance', 'nom_region_deces', 'nom_departement_deces','ville_deces']
+    # initialisation de la liste
+    liste_a_traiter = []
+    position= -1
+    # processus de creation du groupby/filtre sectoriel  
+    for ind, item in enumerate(liste_secteur):
+        if position<0:
+            liste_a_traiter.append(item)
+        if item == ce_ss_secteur and ind>0:
+            position = ind
+    
+    # transforme pandas en polar 
+    mon_pl = pl.DataFrame(df)
+    
+    # FILTRAGE/GROUPBY
+    pl_cumul_secteur = (
+        mon_pl.lazy()
+        .filter(pl.col("pays_naissance") == "FRANCE")
+        .group_by(liste_a_traiter)
+        .agg([
+            # Nombre de non-originaires
+            (pl.col(cette_origine) == "N").sum().alias("item_nb_non_origine"),
+            # Nombre d'originaires
+            (pl.col(cette_origine) == "O").sum().alias("item_nb_origine"),
+            # Distance cumulée non-originaires
+            (pl.col("distance").filter(pl.col(cette_origine) == "N"))
+            .sum()
+            .alias("item_distance_non_origine"),
+            # Distance cumulée originaires
+            (pl.col("distance").filter(pl.col(cette_origine) == "O"))
+            .sum()
+            .alias("item_distance_origine"),
+            (pl.col("distance").filter(pl.col(cette_origine) == "N"))
+            .median().alias("med_distance_non_ori"),
+            (pl.col("distance").filter(pl.col(cette_origine) == "O"))
+            .median().alias("med_distance_ori"), 
+            pl.col("idligne").median().alias("nb_deces"),
+            pl.col("distance").median().alias("distance_cum"),
+        ])
+        
+        # Taux d'attractivité de fin de vie TAFV
+        .with_columns([
+            (pl.col("item_nb_non_origine")/
+              (pl.col("item_nb_origine")+pl.col("item_nb_non_origine") )
+            ).round(1).alias("TAFV") # Taux d'attractivité de fin de vie
+        ])
+        # Indice de Mobilité différentielle IMD
+        .with_columns([
+            ((pl.col("med_distance_non_ori"))/
+             (pl.col("med_distance_ori"))
+            ).fill_nan(0).round(1).alias("IMD") #  
+        ])
+        .with_columns([
+            ((pl.col("med_distance_non_ori")-pl.col("med_distance_ori"))/
+             (pl.col("med_distance_non_ori")+pl.col("med_distance_ori"))
+            ).round(3).alias("IMD_nor") #  
+        ])
+        .with_columns([
+            pl.col("IMD_nor").fill_nan(0) #  
+        ])
+        .collect()
+        )  
+        
+    # transforme polar en pandas
+    df_cumul_secteur = pl_cumul_secteur.to_pandas()
+    
+    # renommer les colonnes correctement 
+    df_cumul_secteur.rename(columns={'item_nb_non_origine': nb_non_origine,
+                                     'item_nb_origine': nb_origine,
+                                     'item_distance_non_origine': distance_non_origine,
+                                     'item_distance_origine': distance_origine, 
+                                     },inplace =True) 
+       
+    return df_cumul_secteur,distance_origine,nb_origine, distance_non_origine, nb_non_origine
+
+def render_graph_score(df_fnl: pd.DataFrame,
+                            nom_secteur:str,
+                            origine_secteur:str)-> go.Figure():
+
+    df_score,distance_origine,nb_origine, distance_non_origine, nb_non_origine = score_secteur (df_fnl,nom_secteur,origine_secteur)
+                
+    fig_TAFV = px.scatter(
+        df_score,
+        x=distance_origine,
+        y=nb_origine,
+        color="TAFV",
+        size="TAFV",
+        hover_name=nom_secteur,
+        color_continuous_scale=[
+            [0.0, "darkorange"],  # valeur basse  steelblue
+            [1.0, "steelblue"],
+        ], #"Viridis",
+        title="Taux d'Attractivité de Fin de Vie",
+        labels={
+            distance_origine: "Distance originaires",
+            nb_origine: "Effectif originaires",
+        }
+    )
+    fig_TAFV.update_layout(
+    plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
+    paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
+    height=450,
+    width=450,
+    )
+
+    fig_IMD = px.scatter(
+        df_score,
+        x=distance_non_origine,
+        y=nb_non_origine,
+        color="IMD",
+        #size="TAFV",
+        hover_name=nom_secteur,
+        color_continuous_scale=[
+            [0.0, "darkorange"],  # valeur basse  steelblue
+            [1.0, "steelblue"],
+        ], #"Viridis",
+        title="Indice de mobilité différentielle",
+        labels={
+            distance_non_origine: "Distance non originaires",
+            nb_non_origine: "Effectif non originaires",
+        }
+    )
+    fig_IMD.update_layout(
+    plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
+    paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
+    height=450,
+    width=450,
+    )
+
+    return fig_TAFV,fig_IMD
