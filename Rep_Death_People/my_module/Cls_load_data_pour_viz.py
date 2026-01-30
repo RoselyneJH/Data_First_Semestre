@@ -24,9 +24,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 
-# pd.set_option("display.max_colwidth", None)
-# pd.set_option("display.max_columns",None)
-
 import matplotlib.ticker as ticker
 
 from functools import reduce
@@ -41,7 +38,7 @@ import polars as pl
 
 
 class ClsLoadDataPourViz:
-    def __init__(self, path_racine: str):
+    def __init__(self, path_racine: str, choix_system:str = "sqlalchemy", mode :str ="local"):
         """
         Initialise une transformation des personnes decedées
 
@@ -49,16 +46,20 @@ class ClsLoadDataPourViz:
             path_racine : repertoire cible
             engine : moteur d'accès à la bdd
         """
+
         # Instancier la classe d'accès à la base de données
         my_bdd = ConnexionBdd(
             path_racine=path_racine,
             filename="Fichier_Connexion.ini",
             section="postgresql",
+            mode=mode,
         )
         # Creation de l'Url
-        self.url_Bdd = my_bdd.creation_de_chaine_de_connexion()
+        self.url_Bdd = my_bdd.creation_de_chaine_de_connexion(choix_system)
+        self.choix_system = choix_system
 
-        self.engine = create_engine(self.url_Bdd)
+        if choix_system=="sqlalchemy":
+            self.engine = create_engine(self.url_Bdd)
 
     def haversine_np(
         self, lat1: np.ndarray, lon1: np.ndarray, lat2: np.ndarray, lon2: np.ndarray
@@ -117,9 +118,7 @@ class ClsLoadDataPourViz:
 
         # Noms des classes
         # labels = ['0-30', '30-60', '60-90', '90+']
-
-        # df_clean['classe_age'] = pd.cut(df_clean['age'],bins=bins,labels=labels,duplicates='drop', right=False)
-
+        # Creation classe d'age
         df_clean = self.creation_classe_age(df_clean_)
 
         # Mapping des codes vers des labels men women
@@ -320,10 +319,11 @@ class ClsLoadDataPourViz:
 
         try:
             # Il faut préparer la chaine de connexion pour ConnectorX
-            nouveau_conn_str = conn_str.replace("+psycopg", "")
-            propre_conn_str = nouveau_conn_str + "?sslmode=disable"
+            #nouveau_conn_str = conn_str.replace("+psycopg", "")
+            #propre_conn_str = nouveau_conn_str + "?sslmode=disable"
             # On gagne 4*fois plus de temps avec polars
-            df = pl.read_database_uri(la_query, propre_conn_str)
+            #df = pl.read_database_uri(la_query, propre_conn_str)
+            df = pl.read_database_uri(la_query, self.url_Bdd)
             return df
 
         except pl.exceptions.PolarsError as e:
@@ -335,7 +335,7 @@ class ClsLoadDataPourViz:
         return None
 
     def ExtractionDataTableDeathPeopleView(self) -> pd.DataFrame:
-        # engine = create_engine(self.url_Bdd)
+        
         la_query = "SELECT idligne, prenom,sex,date_naissance_dt,num_insee_naissance,"
         la_query = la_query + "ville_naissance,pays_naissance,latitude_naissance,"
         la_query = la_query + "longitude_naissance,code_departement_naissance,"

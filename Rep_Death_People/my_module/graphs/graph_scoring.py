@@ -63,34 +63,52 @@ def score_secteur(df:pd.DataFrame, ce_ss_secteur:str, cette_origine_:str)->pd.Da
             .median().alias("med_distance_non_ori"),
             (pl.col("distance").filter(pl.col(cette_origine) == "O"))
             .median().alias("med_distance_ori"), 
-            pl.col("idligne").median().alias("nb_deces"),
-            pl.col("distance").median().alias("distance_cum"),
         ])
         
         # Taux d'attractivité de fin de vie TAFV
         .with_columns([
             (pl.col("item_nb_non_origine")/
               (pl.col("item_nb_origine")+pl.col("item_nb_non_origine") )
-            ).round(1).alias("TAFV") # Taux d'attractivité de fin de vie
+            ).round(3).alias("TAFV") # Taux d'attractivité de fin de vie
         ])
         # Indice de Mobilité différentielle IMD
         .with_columns([
+            pl.when(
+            (pl.col("med_distance_ori") == 0) | pl.col("med_distance_ori").is_null()
+            ).then(
+                None
+            ).otherwise(
             ((pl.col("med_distance_non_ori"))/
-             (pl.col("med_distance_ori"))
-            ).fill_nan(0).round(1).alias("IMD") #  
+             (pl.col("med_distance_ori")) )
+            ).round(2).alias("IMD") #  
+        ])
+        # Indice de mobilité différentielle normalisé 
+        .with_columns([
+            pl.when(pl.col("IMD").is_null()).then(1).otherwise(
+            ((pl.col("IMD")-pl.col("IMD").min())/
+             (pl.col("IMD").max()-pl.col("IMD").min())
+            )).alias("IMD_nor") #  
         ])
         .with_columns([
-            ((pl.col("med_distance_non_ori")-pl.col("med_distance_ori"))/
-             (pl.col("med_distance_non_ori")+pl.col("med_distance_ori"))
-            ).round(3).alias("IMD_nor") #  
+            ((pl.col("item_nb_non_origine") - pl.col("item_nb_non_origine").min())/
+            (pl.col("item_nb_non_origine").max() - pl.col("item_nb_non_origine").min())
+            ).alias("non_orig_norm"),
+            ((pl.col("item_nb_origine") - pl.col("item_nb_origine").min()) /
+            (pl.col("item_nb_origine").max() - pl.col("item_nb_origine").min())
+            ).alias("orig_norm"),
+            ((pl.col("item_distance_non_origine") - pl.col("item_distance_non_origine").min()) /
+            (pl.col("item_distance_non_origine").max() - pl.col("item_distance_non_origine").min())
+            ).alias("distance_non_orig_norm"),            
         ])
         .with_columns([
-            pl.col("IMD_nor").fill_nan(0) #  
-        ])
+            ((0.6 * pl.col("orig_norm") ) + (0.2 * pl.col("non_orig_norm")) # Formule du scoring
+              +(0.1 * (1 - pl.col("distance_non_orig_norm"))))
+              .alias("score"),
+            ])
         .collect()
         )  
-        
-    # transforme polar en pandas
+
+    # transforme polar en pandas)
     df_cumul_secteur = pl_cumul_secteur.to_pandas()
     
     # renommer les colonnes correctement 
@@ -106,54 +124,140 @@ def render_graph_score(df_fnl: pd.DataFrame,
                             nom_secteur:str,
                             origine_secteur:str)-> go.Figure():
 
-    df_score,distance_origine,nb_origine, distance_non_origine, nb_non_origine = score_secteur (df_fnl,nom_secteur,origine_secteur)
-                
-    fig_TAFV = px.scatter(
-        df_score,
-        x=distance_origine,
-        y=nb_origine,
-        color="TAFV",
-        size="TAFV",
-        hover_name=nom_secteur,
-        color_continuous_scale=[
-            [0.0, "darkorange"],  # valeur basse  steelblue
-            [1.0, "steelblue"],
-        ], #"Viridis",
-        title="Taux d'Attractivité de Fin de Vie",
-        labels={
-            distance_origine: "Distance originaires",
-            nb_origine: "Effectif originaires",
-        }
-    )
-    fig_TAFV.update_layout(
-    plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
-    paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-    height=450,
-    width=450,
-    )
+    # Permet d'identifier la vue à présenter en fonction du choix utilisateur
+    view_secteur= "N"
+    if nom_secteur == "nom_departement_deces" or nom_secteur == "nom_region_deces":
+        view_secteur= "O"        
+    # Acces à la fonction de decoupage sectorielle
+    df_score,distance_origine,nb_origine, distance_non_origine, nb_non_origine = score_secteur (df_fnl,
+                                                                        nom_secteur,
+                                                                        origine_secteur)
+    # graphe :
+    if len(df_score)>1: # Alors secteur différent d'une ville 
+        if view_secteur=='N':   # Secteur = departement ou region     
+            fig_score = px.scatter(
+                df_score,
+                x=distance_non_origine,
+                y=nb_non_origine,
+                color="score", 
+                size="score", 
+                hover_name=nom_secteur,
+                color_continuous_scale=[
+                    [0.0, "darkorange"],  # valeur basse  steelblue
+                    [1.0, "steelblue"],
+                ], #"Viridis",
+                title="Scoring des villes", 
+                labels={
+                    distance_non_origine: "Distance parcourue par les originaires",
+                    nb_non_origine: "Effectif des originaires",
+                }
+            )
+            fig_score.update_layout(
+            plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
+            paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
+            height=450,
+            width=450,
+            )
+            fig_score.update_coloraxes(
+                colorbar=dict(
+                    title="Ancrage",
+                    tickvals=[0, 0.25, 0.5, 0.75, 1],
+                    ticktext=[
+                        "Très faible",
+                        "Faible",
+                        "Moyenne",
+                        "Bonne",
+                        "Très élevée",
+                    ]
+                )
+            )
+            return fig_score, df_score
+        else:
+            # Je dois prendre en compte le cas ou la 3ieme DIM =0 (cad df_score ne comporte pas d'originaire
+            # sur ce secteur donc la taille pose pb dans le visuel du graphe)
+            # Je sépare les 2 courbes et j'attribue de façon artificielle une taille à la valeur nulle :
+            fig_IMD = go.Figure()
+            df_score_sup = df_score[df_score[nb_origine]>0]
+            val_artificiel= 0.3*max(df_score_sup[nb_origine])/(40.**2)
 
-    fig_IMD = px.scatter(
-        df_score,
-        x=distance_non_origine,
-        y=nb_non_origine,
-        color="IMD",
-        #size="TAFV",
-        hover_name=nom_secteur,
-        color_continuous_scale=[
-            [0.0, "darkorange"],  # valeur basse  steelblue
-            [1.0, "steelblue"],
-        ], #"Viridis",
-        title="Indice de mobilité différentielle",
-        labels={
-            distance_non_origine: "Distance non originaires",
-            nb_non_origine: "Effectif non originaires",
-        }
-    )
-    fig_IMD.update_layout(
-    plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
-    paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-    height=450,
-    width=450,
-    )
+            fig_IMD.add_scatter(
+                y=df_score_sup["TAFV"],
+                x=df_score_sup["IMD_nor"],
+                text=df_score_sup[nom_secteur],     # colonne à afficher
+                hoverinfo="text+x+y",   # ce qui apparaît
+                mode="markers",
+                marker=dict(
+                    colorscale="Viridis",        # affiche le type de couleur de la colorbar
+                    colorbar=dict(# personnalise la colorbar
+                        title="Locaux (nb)",
+                        #tickvals=[0, 0.25, 0.5, 0.75, 1],
+                        tickmode="array",   # ← IMPORTANT
+                        #ticktext=[
+                        #    "Très faible",
+                        #    "Faible",
+                        #    "Moyenne",
+                        #    "Bonne",
+                        #    "Très élevée"
+                        #]
+                    ),
+                    size=df_score_sup[nb_origine], # affiche la taille en fonction de cette valeur
+                    color=df_score_sup[nb_origine] , # affiche la couleur en fonction de cette valeur
+                    showscale=True,              # affiche la colorbar
+                    sizemode="area", # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
+                    sizeref=2.*max(df_score_sup[nb_origine])/(40.**2),
+                    opacity=0.6,
+                ),
+            )
 
-    return fig_TAFV,fig_IMD
+            df_score_inf = df_score[df_score[nb_origine]==0]
+            fig_IMD.add_scatter(
+                y=df_score_inf["TAFV"],
+                x=df_score_inf["IMD_nor"],
+                #name="",
+                mode="markers",
+                marker=dict(
+                    colorscale="Viridis",
+                    size=val_artificiel, # taille artificielle pour "voir" l'étoile
+                    color=df_score_inf[nb_origine] ,
+                    symbol="star",
+                    sizemode="area",
+                    sizeref=val_artificiel,
+                    opacity=0.6,
+                ),
+            )
+            
+            fig_IMD.update_layout(
+            title="Indice de mobilité différentielle vs Taux d'attractivité",
+            showlegend=False, # desactive la legende pour les 2 add_scatter
+            xaxis_title="Taux d'attractivité ",
+            yaxis_title="Indice de mobilité différentielle",
+            plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
+            paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
+            height=450,
+            width=450,
+            )
+                       
+            return fig_IMD, df_score
+    else:
+        data = {
+            "Decès": [nb_non_origine, nb_origine],
+            "Valeur": [df_score.iloc[0,4], df_score.iloc[0,5]]
+        }
+        df = pd.DataFrame(data)
+        fig = px.pie(
+            df,
+            names="Decès",
+            values="Valeur",
+            title="Répartition des décès",
+            labels={
+                "Decès": "Type de population",
+                "Valeur": "Nombre de personnes"
+                    }
+        )
+        fig.update_layout(
+            #plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
+            paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
+            height=450,
+            width=450,
+            )
+        return fig,df_score

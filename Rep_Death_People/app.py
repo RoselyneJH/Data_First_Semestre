@@ -3,8 +3,9 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly
+from streamlit_plotly_events import plotly_events
+import os
 
-from my_module.Cls_load_data_pour_viz import ClsLoadDataPourViz
 import requests
 
 from typing import List, Dict, Union, Tuple
@@ -13,7 +14,7 @@ from streamlit_plotly_events import plotly_events
 import polars as pl
 import numpy as np
 
-
+from my_module.Cls_load_data_pour_viz import ClsLoadDataPourViz
 from pathlib import Path
 from my_module.graphs.graph_bar_origine import render_graph_bar_origine as graph_bar_origine
 
@@ -70,12 +71,28 @@ def load_dataframe()-> pd.DataFrame:
             - dataframe standard sans agregation selon kpi
             - dataframe avec rang des kpis selon secteur
     """
+    # Charger secrets
+    if hasattr(st, "secrets"):
+        for k, v in st.secrets.items():
+            os.environ[k] = str(v)
+    else:
+        print("Pas de secrets définis")
+
+    # Détection environnement par le host
+    host = os.environ.get("DB_HOST", "")
+
+    if "supabase" in host:
+        mode = "cloud"
+    else:
+        mode = "local"
     
     # ---  Recupération de mes données via la classe ---
     my_class = ClsLoadDataPourViz(
-        path_racine= str(Path.cwd()) 
+        path_racine= str(Path.cwd()),
+        choix_system="polars",
+        mode=mode,
     )
-
+    
     df_person_nais_dece_departement_region = (
         my_class.ExtractionDataTableDeathPeopleView()
     )
@@ -153,8 +170,6 @@ def recherche_dominant_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
     
     return age_moyen, serie_sex, serie_prenom, serie_lieu_naissance, serie_lieu_deces, origine_dominante, distance_moy
 
-
-
 # Récupération des regions et départements
 geojson_regions, geojson_departements = load_geojsons()
 
@@ -162,7 +177,7 @@ geojson_regions, geojson_departements = load_geojsons()
 df_grp, df = load_dataframe()
 
 # Le titre
-st.title("Mortalité et origine des populations en 2024")
+st.title("Analyse géographique des décès en France en 2024")
 
 # --- Fond d'écran ---
 st.markdown(
@@ -266,6 +281,8 @@ start, end = st.sidebar.slider("Âge :", 0, 105, (20, 85))
 df_final = df_final_[(df_final_["age"] >= start) & (df_final_["age"] <= end)]
 
 df_fnl = df_fnl_[(df_fnl_["age"] >= start) & (df_fnl_["age"] <= end)]
+
+st.write("Auteur : R.Jean ")
 
 # Test si presence de valeurs apres selection :
 if len(df_final) > 0:
@@ -614,7 +631,7 @@ if restitution_des_valeurs:
     )
 
     # --- Affichage dans Streamlit ---
-    st.sidebar.plotly_chart(fig, use_container_width=True)
+    st.sidebar.plotly_chart(fig, width="stretch")
     
     # --- Tabulations  ---
 
@@ -660,56 +677,37 @@ if restitution_des_valeurs:
                 """
                 <div style="background-color: #ADD8E6; ">
                 Les indicateurs présents dans ces graphes sont relatifs à la fin de vie.\n
+                => TAFV et IMD sont calculés sur un département ou une region, le score est 
+                relatif a une ville.\n
                 📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir, 
                 au moment du décès, des personnes qui n'y sont pas nées.
                 Interprétation :<br>
-                <b>-</b> TAFV > 0.6 le secteur est très attractif en fin de vie.<br> 
-                <b>-</b> TAFV < 0.3 les décès sont majoritairement des locaux.\n 
-                📌L'indice de mobilité différentiel (IMD) mesure la mobilité entre originaires et non 
+                <b>-</b> TAFV > 0.6 le secteur est très attractif en fin de vie pour les exogènes. Cela peut refléter la présence d'hôpitaux, d'EHPAD
+                ou de zones de retraite présidentielle.<br> 
+                <b>-</b> TAFV < 0.3 les décès sont majoritairement locaux.\n 
+                📌 L'indice de mobilité différentiel (IMD) mesure la mobilité entre originaires et non 
                 originaires d'un secteur.<br> 
-                <b>-</b> IMD > 1 les non originaires sont mobiles. <br>
-                <b>-</b> IMD < 1 les natifs sont plus mobiles.<br>
-                <b>-</b> IMD = 1 le comportement est assez proche.<br>
+                <b>-</b> IMD > 0.5 les exogènes sont plus mobiles. <br>
+                <b>-</b> IMD < 0.5 les natifs sont plus mobiles.\n
+                📌 Le score mesure dans quelle mesure une ville concentre beaucoup de personnes qui y sont originaires
+                et qui y terminent leur vie.<br> 
+                <b>-</b> Score > 0.5 le secteur “garde ses habitants”. Cela reflète un ancrage territoriale.<br> 
+                <b>-</b> Score < 0.5 le Le secteur est attractif pour des personnes venues d’ailleurs.<br> 
                 </div>
+                
             """,
                 unsafe_allow_html=True,
             )
-            fig_TAFV, fig_IMD = graph_scoring(df_fnl,nom_secteur,origine_secteur)
-            #df_score,distance_origine,nb_origine = score_secteur (df_fnl,nom_secteur,origine_secteur)
-            
-            #fig = px.scatter(
-            #    df_score,
-            #    x=distance_origine,
-            #    y=nb_origine,
-            #    color="IMD_nor",#"TAFV",
-            #    #size= "IMD_nor",#"TAFV",
-            #    hover_name=nom_secteur,
-            #    #color_continuous_scale=[
-            #    #    [0.0, "darkorange"],  # valeur basse  steelblue
-            #    #    [1.0, "steelblue"],
-            #    #], #"Viridis",
-            #    title="Taux d'Attractivité de Fin de Vie",
-            #    #labels={
-            #    #    "distance_moyenne_origine": "Distance moyenne originaires",
-            #    #    "nb_origine_nationale": "Nombre d'originaires",
-            #    #    "score": "Score"
-            #    #}
-            #)
-            #fig.update_layout(
-            #plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
-            #paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-            #height=450,
-            #width=450,
-            #)
-            col1, col2 = st.columns([3.2, 3.1])
-            with col1:
-                with st.container(border=True):         
-                    st.plotly_chart(fig_TAFV, use_container_width=True,  key="Graphe_TAFV")
-            with col2:
-                with st.container(border=True):         
-                    st.plotly_chart(fig_IMD, use_container_width=True,  key="Graphe_IMD")
 
-            st.dataframe(df_fnl)
+            fig_score, df_score = graph_scoring(df_fnl,nom_secteur,origine_secteur)
+            
+            with st.container(border=True):         
+                st.plotly_chart(fig_score, width="stretch", key="Graphe_score")  
+                
+             
+
+            #st.dataframe(df_score)
+
 
     # -----------------------------
     # TAB 2
@@ -719,6 +717,7 @@ if restitution_des_valeurs:
         # Barplot selon filtres
         # -----------------------------
         with st.container(border=True):
+            
             st.markdown(
                 """
                 <div style="background-color: #ADD8E6; ">
@@ -764,7 +763,7 @@ if restitution_des_valeurs:
 
                 with tab11:
                     st.plotly_chart(
-                        la_fig, use_container_width=True, key="Graphe_bar_origine"
+                        la_fig, width="stretch", key="Graphe_bar_origine"
                     )
 
         with col2:
@@ -801,7 +800,7 @@ if restitution_des_valeurs:
                             list_ordonnee_secteur_sans_dbl,
                             "O",
                         ),
-                        use_container_width=True,
+                        width="stretch",
                         key="Clas_Age_Ori_O",
                     )
 
@@ -816,7 +815,7 @@ if restitution_des_valeurs:
                             list_ordonnee_secteur_sans_dbl,
                             "N",
                         ),
-                        use_container_width=True,
+                        width="stretch",
                         key="Clas_Age_Ori_N",
                     )
 
@@ -838,7 +837,7 @@ if restitution_des_valeurs:
             with st.container(border=True):
                 st.plotly_chart(
                     graph_bar_month(df_bar_month, origine_secteur),
-                    use_container_width=True,
+                    width="stretch",
                     key="bar_month",
                 )
 
@@ -846,7 +845,7 @@ if restitution_des_valeurs:
             with st.container(border=True):
                 st.plotly_chart(
                     graph_bar_class_age_month(df_bar_month_cl, origine_secteur),
-                    use_container_width=True,
+                    width="stretch",
                     key="bar_monthEtClAge",
                 )
 

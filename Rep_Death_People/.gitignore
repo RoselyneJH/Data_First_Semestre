@@ -1,0 +1,50 @@
+# =====================
+# Python
+# =====================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.env
+.venv/
+venv/
+
+# =====================
+# Streamlit
+# =====================
+.streamlit/secrets.toml
+.streamlit/*.toml
+
+# Cache Streamlit
+.streamlit/cache/
+.streamlit/*.pickle
+
+# =====================
+# Config / credentials
+# =====================
+*.ini
+*.cfg
+*.conf
+
+# =====================
+# Logs
+# =====================
+*.log
+my_log/
+
+# =====================
+# OS / IDE
+# =====================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# =====================
+# Exports / dumps
+# =====================
+*data.sql
+*.dump
+*.csv
+*.parquet
