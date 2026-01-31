@@ -3,14 +3,14 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly
-from streamlit_plotly_events import plotly_events
+#from streamlit_plotly_events import plotly_events
 import os
 
 import requests
 
 from typing import List, Dict, Union, Tuple
 
-from streamlit_plotly_events import plotly_events
+#from streamlit_plotly_events import plotly_events
 import polars as pl
 import numpy as np
 
