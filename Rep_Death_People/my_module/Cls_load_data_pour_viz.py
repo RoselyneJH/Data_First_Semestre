@@ -18,7 +18,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base
 
-import missingno as msno
+# import missingno as msno
 
 import matplotlib.pyplot as plt
 import numpy as np
