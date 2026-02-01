@@ -20,11 +20,11 @@ from sqlalchemy.orm import declarative_base
 
 # import missingno as msno
 
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
+#import seaborn as sns
 
-import matplotlib.ticker as ticker
+#import matplotlib.ticker as ticker
 
 from functools import reduce
 
