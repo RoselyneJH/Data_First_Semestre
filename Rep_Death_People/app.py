@@ -13,6 +13,7 @@ from typing import List, Dict, Union, Tuple
 #from streamlit_plotly_events import plotly_events
 import polars as pl
 import numpy as np
+from pathlib import Path
 
 from my_module.Cls_load_data_pour_viz import ClsLoadDataPourViz
 from pathlib import Path
@@ -175,6 +176,11 @@ geojson_regions, geojson_departements = load_geojsons()
 
 # Recupération des datas provenant de la Bdd
 df_grp, df = load_dataframe()
+
+# Chemin relatif pour la recupération des images .svg 
+BASE_DIR = Path(__file__).resolve().parent
+image_path_men = BASE_DIR / "assets" / "men.svg"
+image_path_women = BASE_DIR / "assets" / "women.svg"
 
 # Le titre
 st.title("Analyse géographique des décès en France en 2024")
@@ -659,9 +665,11 @@ if restitution_des_valeurs:
                 sex = "homme"  # Exemple: ici, tu pourrais avoir une condition qui choisit entre "homme" ou "femme"
                 
                 if serie_sex[0] == "H":
-                    st.image("assets/men.svg", width=120) # Affichage de l'icône homme
+                    #st.image("assets/men.svg", width=120) # Affichage de l'icône homme
+                    st.image(image_path_men, width=120)
                 else:
-                    st.image("assets/women.svg", width=120)  # Affichage de l'icône femme
+                    #st.image("assets/women.svg", width=120)  # Affichage de l'icône femme
+                    st.image(image_path_women, width=120)
             
             col_pren.metric("Prénom dominant", serie_prenom[0])
             col_lieu_nai.metric("Secteur de naissance dominant",serie_lieu_naissance[0] )        
