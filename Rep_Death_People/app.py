@@ -1,3 +1,10 @@
+#####################################################################################  
+#                                                                                   #
+#                               A P P L I C A T I O N                               #
+#                                 S T R E A M L I T                                 #
+#                                                                                   #
+#####################################################################################
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -20,15 +27,21 @@ from pathlib import Path
 from my_module.graphs.graph_bar_origine import render_graph_bar_origine as graph_bar_origine
 
 from my_module.graphs.graph_bar_month import render_graph_bar_month as graph_bar_month
+
 from my_module.graphs.graph_bar_month import (
     render_graph_bar_class_age_month as graph_bar_class_age_month,
 )
+
 from my_module.graphs.graph_heat_map import (
     render_graph_heat_map_origine as graph_heat_map_origine,
 )
 
-from my_module.graphs.graph_scoring import (
+from my_module.graphs.graph_secteur_score_TAFV import (
     render_graph_score as graph_scoring,
+)
+
+from my_module.graphs.graph_age_TAFV import (
+    render_graph_score_age as graph_score_age,
 )
 
 # -------------------------------------------------------------------------------------
@@ -227,6 +240,13 @@ st.markdown(
         font-size: 16px;
         font-family: 'Courier New', monospace;
     }
+    
+    /* Valeurs du slider (20, 85) */
+        .stSlider * {
+            color: #00090f !important;
+    }
+ 
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -293,7 +313,8 @@ st.write("Auteur : R.Jean ")
 # Test si presence de valeurs apres selection :
 if len(df_final) > 0:
     valeur = df_final["nb_deces"].sum()   
-    st.write(f"Déces sélectionnés : {valeur:,}".replace(",", " "))
+    #st.write(f"Déces sélectionnés : {valeur:,}".replace(",", " "))
+    st.sidebar.info(f"Décès : {valeur:,}".replace(",", " "))
     restitution_des_valeurs = True
 else:
     st.warning(
@@ -612,14 +633,7 @@ if restitution_des_valeurs:
         height=300,
         width=300,
     )
-    # Dans scatter_mapbox
-    # Le paramètre zoom contrôle le niveau de détail de la carte :
-    # zoom=3 → on voit l’Europe
-    # zoom=5 → on voit toute la France
-    # zoom=7 → on voit une région
-    # zoom=9 → on voit une ville
-    # zoom=12+ → on voit un quartier
-
+    
     # --- Appliquer à la carte ----
     fig.update_layout(
         mapbox_style="open-street-map",
@@ -641,12 +655,30 @@ if restitution_des_valeurs:
     
     # --- Tabulations  ---
 
-    (tabMain, tabAnalyse) = st.tabs(["📌Tableau de Bord","🔍 Analyse"])
+    #(tabMain, tabAnalyse) = st.tabs(["📌Tableau de Bord","🔍 Analyse"])
+    (tabMain,) = st.tabs(["📌Tableau de Bord"])
 
     # -----------------------------
     # TAB 1
     # -----------------------------
     with tabMain:
+        with st.container(border=True):
+            st.subheader("Objectifs :")
+            st.markdown(
+                """
+                <div style="background-color: #ADD8E6; ">
+                Cette présentation consiste à distinguer les territoires qui perdent leurs seniors
+                de ceux qui y restent pour leur vie.\n
+                Cette information est importante pour les sociétés d'assurances et complémentaires
+                santé. <br> Les territoires avec beaucoup de seniors indiquent potentiellement : <br>
+                <b>-</b> Des successions plus nombreuses à moyen terme <br>
+                <b>-</b> Des transferts d’épargne et d’immobilier <br>
+                <b>-</b> Une activation future de contrats d’assurance-vie <br>
+                </div>                
+                """,
+                unsafe_allow_html=True,
+            )
+
         with st.container(border=True):
             if origine_secteur == 'origine_nationale':
                 st.subheader("Portrait moyen du défunt en France")
@@ -665,11 +697,9 @@ if restitution_des_valeurs:
                 sex = "homme"  # Exemple: ici, tu pourrais avoir une condition qui choisit entre "homme" ou "femme"
                 
                 if serie_sex[0] == "H":
-                    #st.image("assets/men.svg", width=120) # Affichage de l'icône homme
-                    st.image(image_path_men, width=120)
-                else:
-                    #st.image("assets/women.svg", width=120)  # Affichage de l'icône femme
-                    st.image(image_path_women, width=120)
+                    st.image(image_path_men, width=120) # Affichage de l'icône homme
+                else: 
+                    st.image(image_path_women, width=120) # Affichage de l'icône femme
             
             col_pren.metric("Prénom dominant", serie_prenom[0])
             col_lieu_nai.metric("Secteur de naissance dominant",serie_lieu_naissance[0] )        
@@ -684,184 +714,92 @@ if restitution_des_valeurs:
             st.markdown(
                 """
                 <div style="background-color: #ADD8E6; ">
-                Les indicateurs présents dans ces graphes sont relatifs à la fin de vie.\n
-                => TAFV et IMD sont calculés sur un département ou une region, le score est 
-                relatif a une ville.\n
+                L'indicateur présent dans ce graphe est relatif à la fin de vie :\n
                 📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir, 
-                au moment du décès, des personnes qui n'y sont pas nées.
-                Interprétation :<br>
-                <b>-</b> TAFV > 0.6 le secteur est très attractif en fin de vie pour les exogènes. Cela peut refléter la présence d'hôpitaux, d'EHPAD
-                ou de zones de retraite présidentielle.<br> 
-                <b>-</b> TAFV < 0.3 les décès sont majoritairement locaux.\n 
-                📌 L'indice de mobilité différentiel (IMD) mesure la mobilité entre originaires et non 
-                originaires d'un secteur.<br> 
-                <b>-</b> IMD > 0.5 les exogènes sont plus mobiles. <br>
-                <b>-</b> IMD < 0.5 les natifs sont plus mobiles.\n
-                📌 Le score mesure dans quelle mesure une ville concentre beaucoup de personnes qui y sont originaires
-                et qui y terminent leur vie.<br> 
-                <b>-</b> Score > 0.5 le secteur “garde ses habitants”. Cela reflète un ancrage territoriale.<br> 
-                <b>-</b> Score < 0.5 le Le secteur est attractif pour des personnes venues d’ailleurs.<br> 
-                </div>
-                
-            """,
+                au moment du décès, des personnes qui n'y sont pas nées :<br>
+                <b>-</b> TAFV < 0.3 le secteur est très attractif en fin de vie pour les exogènes. Cela peut refléter la présence d'hôpitaux, d'EHPAD
+                ou de zones de retraite résidentielle.<br> 
+                <b>-</b> TAFV > 0.6 les décès sont majoritairement locaux (fort ancrage territorial).\n 
+                </div>                
+                """,
                 unsafe_allow_html=True,
             )
-
-            fig_score, df_score = graph_scoring(df_fnl,nom_secteur,origine_secteur)
             
-            with st.container(border=True):         
-                st.plotly_chart(fig_score, width="stretch", key="Graphe_score")  
-                
-             
-
-            #st.dataframe(df_score)
-
-
-    # -----------------------------
-    # TAB 2
-    # -----------------------------
-    with tabAnalyse:  
-        # -----------------------------
-        # Barplot selon filtres
-        # -----------------------------
-        with st.container(border=True):
+            fig_score, message_score,df_score = graph_scoring(df_fnl,nom_secteur,origine_secteur)
             
-            st.markdown(
-                """
-                <div style="background-color: #ADD8E6; ">
-                Ces graphiques permettent d’observer simultanément la répartition géographique, les classes d'âge 
-                de la mortalité couplés à l'origine des populations pour chaque secteur (région, département et ville).\n
-                📌 Si la mortalité des originaires est importante, alors la population est très ancrée sur ce secteur.
-                C'est un indicateur intéressant pour péreniser le business des sociétés de produits financiers
-                (assurances, banques..).
-                </div>
-            """,
-                unsafe_allow_html=True,
-            )
+            fig_score_age, df_score_age = graph_score_age(df_fnl,nom_secteur,origine_secteur) 
+            fig_score_age_Exo, df_score_age = graph_score_age(df_fnl,nom_secteur,origine_secteur,False)          
 
-        # Preparation de l'alignement des graphes
-        # Colonnes côte à côte
-        # Mettre un espace entre les différents conteneurs
-        col1, col2 = st.columns([3.2, 3.1])
-        
-        # creation du graphe
-        la_fig, list_ordonnee_secteur_sans_dbl = graph_bar_origine(
-            df_bar, nom_secteur, origine_secteur
-        )
-
-        with col1:
             with st.container(border=True):
+                 
+                # Preparation de l'alignement des graphes
+                # Colonnes côte à côte
+                # Mettre un espace entre les différents conteneurs
+                col1, col2 = st.columns([5,4.2])
+                with col1:
+                    
+                    with st.container(border=True): 
+                        # Ouvre un pop-up
+                        with st.popover("ℹ️ À propos de ce graphique"):
+                            st.markdown(
+                                """
+                                <div style="background-color: #ADD8E6;
+                                    padding:12px;
+                                    border-radius:8px;
+                                    border-left:4px solid #1f77b4; ">
+                                Le taux d'attractivité decoupe le graphe en 3 zones : <br>
+                                <b>-</b> Zone à forte présence d'exogènes <br>
+                                <b>-</b> Zone neutre <br>
+                                <b>-</b> Zone à forte présence d'originaires <br>
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                         # Tabs ds Streamlit
+                        tab11,  = st.tabs(["📊 Poids des secteurs"])
 
-                # Ouvre un pop-up
-                with st.popover("ℹ️ À propos de ce graphique"):
-                    st.markdown(
-                        """
-                        <div style="background-color: #ADD8E6;
-                            padding:12px;
-                            border-radius:8px;
-                            border-left:4px solid #1f77b4; ">
-                        Ce graphique représente : <br>
-                        <b>-</b> les décès par secteur (région, département, ville) <br>
-                        <b>-</b> ventilé par l'origine des décès <br>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                (tab11,) = st.tabs(["📊 Originaire et Exogène"])
+                        with tab11:                                 
+                            st.plotly_chart(fig_score, width="stretch", key="Graphe_score")             
+                    
+                with col2:
+                    
+                    with st.container(border=True):                        
+                        # Ouvre un pop-up
+                        with st.popover("ℹ️ À propos de ces graphiques"):
+                            st.markdown(
+                                """
+                                <div style="background-color: #ADD8E6;
+                                    padding:12px;
+                                    border-radius:8px;
+                                    border-left:4px solid #1f77b4; ">
+                                Ces deux visualisations présentent les extrêmes du TAFV afin de distinguer les territoires 
+                                d’ancrage des territoires à attractivité exogène.<br>
+                                <b>-</b> Les 5 meilleures cellules apparaissent avec un cadre noir. 
+                                Leur rang est spécifié dans l'encadré.<br>
+                                <b>-</b> La meilleur classe d'age et le meilleur secteur sont mis en surbrillance.
+                                </div>
+                                """,
+                                unsafe_allow_html=True,
+                            ) 
+                        # Tabs ds Streamlit
+                        tab21, tab22 = st.tabs(["📊 Top 5 des Originaires", "📈 Top 5 des Exogènes"])
 
-                with tab11:
-                    st.plotly_chart(
-                        la_fig, width="stretch", key="Graphe_bar_origine"
-                    )
+                        with tab21:
+                            st.plotly_chart(fig_score_age, 
+                                            width="stretch", 
+                                            key="Graphe_score_age",
+                                            ) 
 
-        with col2:
-            with st.container(border=True):
+                        with tab22:
+                            st.plotly_chart(fig_score_age_Exo, 
+                                              width="stretch", 
+                                              key="Graphe_score_age_Exo",
+                                               ) 
+                
+                # message de suppression d'éventuel secteur sans intéret
+                st.text(message_score) 
 
-                # Ouvre un pop-up
-                with st.popover("ℹ️ À propos de ce graphique"):
-                    st.markdown(
-                        """
-                        <div style="background-color: #ADD8E6;
-                            padding:12px;
-                            border-radius:8px;
-                            border-left:4px solid #1f77b4; ">
-                        Ce graphique représente selon critère sur Origine :<br>
-                        <b>-</b> les décès par classe d’âge <br>
-                        <b>-</b> ventilés par origine secteur (région, département, ville) <br>
-                        <b>-</b> agrégés par secteur <br>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
+            st.dataframe(df_fnl)
+            
 
-                # Tabs ds Streamlit
-                tab21, tab22 = st.tabs(["📊 Originaire", "📈 Exogène"])
-
-                with tab21:
-                    # st.subheader("Analyse – Graphe 1")
-                    # Affichage dans Streamlit
-                    st.plotly_chart(
-                        graph_heat_map_origine(
-                            df_bar_cl,
-                            nom_secteur,
-                            origine_secteur,
-                            list_ordonnee_secteur_sans_dbl,
-                            "O",
-                        ),
-                        width="stretch",
-                        key="Clas_Age_Ori_O",
-                    )
-
-                with tab22:
-                    # st.subheader("Analyse – Graphe 2")
-                    # Affichage dans Streamlit
-                    st.plotly_chart(
-                        graph_heat_map_origine(
-                            df_bar_cl,
-                            nom_secteur,
-                            origine_secteur,
-                            list_ordonnee_secteur_sans_dbl,
-                            "N",
-                        ),
-                        width="stretch",
-                        key="Clas_Age_Ori_N",
-                    )
-
-        with st.container(border=True):
-            st.markdown(
-                """
-                <div style="background-color: #ADD8E6; ">
-                Ces graphiques permettent d’observer la fréquence de la mortalité, selon la classe d'âge et l'origine.\n        
-                📌 Cela permet pour les sociétés de pompe funebre, d'anticiper les pics d'activité.
-                </div>
-            """,
-                unsafe_allow_html=True,
-            )
-
-        # Mettre un espace entre les différents conteneurs
-        col3, col4 = st.columns([3.2, 3.2])
-
-        with col3:
-            with st.container(border=True):
-                st.plotly_chart(
-                    graph_bar_month(df_bar_month, origine_secteur),
-                    width="stretch",
-                    key="bar_month",
-                )
-
-        with col4:
-            with st.container(border=True):
-                st.plotly_chart(
-                    graph_bar_class_age_month(df_bar_month_cl, origine_secteur),
-                    width="stretch",
-                    key="bar_monthEtClAge",
-                )
-
-        # (Optionnel) Afficher le DataFrame filtré
-        with st.expander("Voir les données filtrées du df_final "):
-            # st.dataframe(df_final)
-            st.dataframe(df_final)
-
-    #st.image("assets/logoWm1.svg", width=50)
-    
     
