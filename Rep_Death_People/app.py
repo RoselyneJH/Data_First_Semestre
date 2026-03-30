@@ -196,7 +196,9 @@ image_path_men = BASE_DIR / "assets" / "men.svg"
 image_path_women = BASE_DIR / "assets" / "women.svg"
 
 # Le titre
-st.title("Analyse géographique des décès en France en 2024")
+st.title("Dynamiques et attractivité des territoires ")
+st.header("Insights pour assurances et politiques publiques")
+st.subheader("Analyse des décès en France (2024)")
 
 # --- Fond d'écran ---
 st.markdown(
