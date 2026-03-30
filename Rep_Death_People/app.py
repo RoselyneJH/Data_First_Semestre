@@ -24,17 +24,17 @@ from pathlib import Path
 
 from my_module.Cls_load_data_pour_viz import ClsLoadDataPourViz
 from pathlib import Path
-from my_module.graphs.graph_bar_origine import render_graph_bar_origine as graph_bar_origine
+#from my_module.graphs.graph_bar_origine import render_graph_bar_origine as graph_bar_origine
 
-from my_module.graphs.graph_bar_month import render_graph_bar_month as graph_bar_month
+#from my_module.graphs.graph_bar_month import render_graph_bar_month as graph_bar_month
 
-from my_module.graphs.graph_bar_month import (
-    render_graph_bar_class_age_month as graph_bar_class_age_month,
-)
+#from my_module.graphs.graph_bar_month import (
+#    render_graph_bar_class_age_month as graph_bar_class_age_month,
+#)
 
-from my_module.graphs.graph_heat_map import (
-    render_graph_heat_map_origine as graph_heat_map_origine,
-)
+#from my_module.graphs.graph_heat_map import (
+#    render_graph_heat_map_origine as graph_heat_map_origine,
+#)
 
 from my_module.graphs.graph_secteur_score_TAFV import (
     render_graph_score as graph_scoring,
