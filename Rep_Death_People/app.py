@@ -184,6 +184,72 @@ def recherche_dominant_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
     
     return age_moyen, serie_sex, serie_prenom, serie_lieu_naissance, serie_lieu_deces, origine_dominante, distance_moy
 
+def statistique_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
+                                   cette_origine_secteur:str)-> Tuple:
+    """
+    Produits des Kpis sur ce secteur
+    Args :
+        nom du secteur à traiter
+        origine du secteur à traiter
+    Return :
+        Séries de kpi :
+        Pourcentage d'originaire, Pourcentage d'exogène, Indicateur TAFV, Age Moy Origi,
+        Age Moy exo, distance mediane par classe d'âge
+    """
+    # Preparation des indicateurs
+    nb_originaire = df_fnl_m[df_fnl_m[cette_origine_secteur] =='O'][cette_origine_secteur].count()
+    nb_exogene = df_fnl_m[df_fnl_m[cette_origine_secteur] =='N'][cette_origine_secteur].count()
+
+    # Pourcentage Originaire
+    #pct_originaire_b = round( nb_originaire/len(df_fnl_m),2)
+    pct_originaire = str(round(100* nb_originaire/len(df_fnl_m),2))
+
+    # Pourcentage Exogène
+    pct_exogene = str(round(100* nb_exogene/len(df_fnl_m),2))
+
+    # Indicateur TAFV
+    ind_TAFV = str(round( nb_originaire/(nb_originaire+nb_exogene),1)) 
+
+    # Distance
+    distance_med_originaire = str(df_fnl_m[df_fnl_m[cette_origine_secteur] =='O']['distance'].median()).replace(".0", " ")+" Km"
+    distance_med_exogene = str(df_fnl_m[df_fnl_m[cette_origine_secteur] =='N']['distance'].median()).replace(".0", " ")+" Km"
+    #print("Cocu",distance_med_originaire)
+
+    # Age moyen Origi/ Exoge
+    age_moy_originaire = str(round(df_fnl_m[df_fnl_m[cette_origine_secteur] =='O']['age'].mean(),0)).replace(".0", "")
+    age_moy_exogene = str(round(df_fnl_m[df_fnl_m[cette_origine_secteur] =='N']['age'].mean() ,0)).replace(".0", "")
+    
+    # Calcul préparatoire
+    #rapport_distance = 1/(1+df_fnl_m['distance'].mean())
+    #rapport_distance_d = 1/(1+(df_fnl_m['distance'].mean()/df_fnl_m['distance'].quantile(0.25))) #
+    #rapport_age = df_fnl_m[df_fnl_m[cette_origine_secteur] =='O']['age'].mean()/(1+df_fnl_m[df_fnl_m[cette_origine_secteur] =='N']['age'].mean())
+    #V = np.log1p(len(df_fnl_m))
+
+    # Score de mobilité 
+    #score_mob = str(round(rapport_distance,3)).replace(".0", "")
+    #   M > 0.2 → très local
+    #   0.05 < M < 0.2 → local modéré
+    #   M < 0.05 → population mobile
+    
+    # Score d'âge
+    #score_age = str(round(rapport_age,2))
+    #print("mon score distance",score_mob,"score age ",score_age)
+    #S_age ≈ 1 → neutre
+    #S_age > 1 → ancrage local fort
+    #S_age < 1 → renouvellement / mobilité
+
+    # L’indice de stabilité client
+    #ind_sta_cl = str(round((1000 * (pct_originaire_b * rapport_distance_d * rapport_age * V) / (1 + V)),2))
+    #print("indice de stabilité client",ind_sta_cl)
+    #Score	Lecture métier
+    #0–20	secteur très instable (flux externe, mobilité forte)
+    #20–40	faible ancrage local
+    #40–60	équilibre local / externe
+    #60–80	secteur stable
+    #80–100	secteur très ancré localement
+
+    return pct_originaire, pct_exogene, ind_TAFV, age_moy_originaire, age_moy_exogene,distance_med_originaire,distance_med_exogene
+
 # Récupération des regions et départements
 geojson_regions, geojson_departements = load_geojsons()
 
@@ -196,7 +262,7 @@ image_path_men = BASE_DIR / "assets" / "men.svg"
 image_path_women = BASE_DIR / "assets" / "women.svg"
 
 # Le titre
-st.title("Dynamiques et attractivité des territoires ")
+st.title("Dynamiques et attractivités des territoires ")
 st.header("Insights pour assurances et politiques publiques")
 st.subheader("Analyse des décès en France (2024)")
 
@@ -292,7 +358,10 @@ else:
 
 # ComboBox Ville
 villes = ["Toutes les villes"] + sorted(df_dept["ville_deces"].unique().tolist())
-ville_selected = st.sidebar.selectbox("Ville :", villes)
+# pour eviter de selectionner des villes sur des départements différents, j'active l'option disabled
+ville_selected = st.sidebar.selectbox("Ville / Arrondissement :", villes,
+    disabled=(departement_selected == "Tous les départements"),
+    help="Choisissez un département pour activer la sélection des villes") 
 
 # Filtrage selon la ville
 if ville_selected == "Toutes les villes":
@@ -310,13 +379,14 @@ df_final = df_final_[(df_final_["age"] >= start) & (df_final_["age"] <= end)]
 
 df_fnl = df_fnl_[(df_fnl_["age"] >= start) & (df_fnl_["age"] <= end)]
 
-st.write("Auteur : R.Jean ")
-
+# -------------------------------------------------------------------------------------
+st.write("Auteur : R.Jean / Source : https://www.insee.fr/fr/statistiques")
+# -------------------------------------------------------------------------------------
 # Test si presence de valeurs apres selection :
 if len(df_final) > 0:
     valeur = df_final["nb_deces"].sum()   
     #st.write(f"Déces sélectionnés : {valeur:,}".replace(",", " "))
-    st.sidebar.info(f"Décès : {valeur:,}".replace(",", " "))
+    st.sidebar.info(f"Sélection décès : {valeur:,}".replace(",", " "))
     restitution_des_valeurs = True
 else:
     st.warning(
@@ -614,7 +684,8 @@ if restitution_des_valeurs:
         )
 
         # ****** Metrics *******
-        df_fnl_m = df_fnl.query("origine_nationale =='O'")
+        df_fnl_m = df_fnl#.query("origine_nationale =='O'") # !!! ROSE
+        #print("df_fnl    >>>> ",df_fnl[df_fnl['origine_nationale']=='N']['ville_deces'].value_counts())
 
     # -------------------------------------------------------------------------------------
 
@@ -658,19 +729,26 @@ if restitution_des_valeurs:
     # --- Tabulations  ---
 
     #(tabMain, tabAnalyse) = st.tabs(["📌Tableau de Bord","🔍 Analyse"])
-    (tabMain,) = st.tabs(["📌Tableau de Bord"])
+    (tabMain,) = st.tabs(["🔍 Analyse "])
 
     # -----------------------------
     # TAB 1
     # -----------------------------
     with tabMain:
+        if origine_secteur == 'origine_nationale':
+            sous_titre_indicateur_personne = "Portrait moyen du défunt en France"
+            sous_titre_indicateur_secteur = "Indicateurs nationaux"
+        else:
+            sous_titre_indicateur_personne = "Portrait moyen du défunt sur ce secteur"
+            sous_titre_indicateur_secteur = "Indicateurs territoriaux"
+
         with st.container(border=True):
             st.subheader("Objectifs :")
             st.markdown(
                 """
                 <div style="background-color: #ADD8E6; ">
-                Cette présentation consiste à distinguer les territoires qui perdent leurs seniors
-                de ceux qui y restent pour leur vie.\n
+                Cette présentation consiste à distinguer deux types de territoires : ceux qui gagnent des seniors (Attractivité) 
+                et ceux qui y restent pour leur vie (Ancrage).\n
                 Cette information est importante pour les sociétés d'assurances et complémentaires
                 santé. <br> Les territoires avec beaucoup de seniors indiquent potentiellement : <br>
                 <b>-</b> Des successions plus nombreuses à moyen terme <br>
@@ -679,27 +757,26 @@ if restitution_des_valeurs:
                 </div>                
                 """,
                 unsafe_allow_html=True,
-            )
+            )        
 
         with st.container(border=True):
-            if origine_secteur == 'origine_nationale':
-                st.subheader("Portrait moyen du défunt en France")
-            else:
-                st.subheader("Portrait moyen du défunt sur ce secteur")
+            
+            st.subheader(sous_titre_indicateur_personne)
 
             col_sex, col_age, col_pren, col_lieu_nai, col_lieu_dec, col_origine, col_dist = st.columns([1.2,
                                     0.9, 2.6, 2.9,2.9, 1, 1.3])
 
             age_moyen, serie_sex, serie_prenom, serie_lieu_naissance, serie_lieu_deces, origine_dominante, distance_moy = recherche_dominant_sur_secteur(
                                 df_fnl_m, nom_secteur, origine_secteur )            
-        
+            
+            
             col_age.metric("Âge moy.", f"{age_moyen} ans")
             # Affichage des icônes SVG dans la colonne `col_sex`
             with col_sex:
                 sex = "homme"  # Exemple: ici, tu pourrais avoir une condition qui choisit entre "homme" ou "femme"
                 
                 if serie_sex[0] == "H":
-                    st.image(image_path_men, width=120) # Affichage de l'icône homme
+                    st.image(image_path_men, width=120) # Affichage de l'icône homme <br>
                 else: 
                     st.image(image_path_women, width=120) # Affichage de l'icône femme
             
@@ -710,7 +787,28 @@ if restitution_des_valeurs:
             col_dist.metric("Distance moy.*",distance_moy)
             
             st.caption("Distance moy.* = Distance moyenne entre le lieux de naissance et de décès.")
-        
+
+
+        with st.container(border=True):
+
+            st.subheader(sous_titre_indicateur_secteur)
+
+            pc_o, pc_e, ind_atfv, moy_age_o, moy_age_e,dis_med_o,dis_med_e = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
+
+            col_pc_originaire, col_pc_exogene, col_ind_tafv,col_moy_age_ori, col_moy_age_exo, col_dist_med_o,col_dist_med_e = st.columns([0.8, 0.8, 0.4, 0.9, 0.9,0.9,0.9])
+
+            col_pc_originaire.metric("Originaire %", pc_o)
+            col_pc_exogene.metric("Exogène %", pc_e)
+            col_ind_tafv.metric("TAFV *", ind_atfv)
+            col_moy_age_ori.metric("Âge moy. Originaire", moy_age_o)
+            col_moy_age_exo.metric("Âge moy. Exogène", moy_age_e)
+            col_dist_med_o.metric("Distance med.* Originaire", dis_med_o)
+            col_dist_med_e.metric("Distance med.* Exogène", dis_med_e)
+            #col_ind_sta_cl.metric("Ind. Stab Client", ind_sta_cl)
+
+            st.caption("Distance med.* = Distance médiane | TAFV * = Taux d'attractivité de fin de vie [0:1]")
+            #st.caption("TAFV.* = Taux d'attractivité de fin de vie [0:1]")
+
         with st.container(border=True):
             st.subheader("Scoring")
             st.markdown(
@@ -718,14 +816,16 @@ if restitution_des_valeurs:
                 <div style="background-color: #ADD8E6; ">
                 L'indicateur présent dans ce graphe est relatif à la fin de vie :\n
                 📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir, 
-                au moment du décès, des personnes qui n'y sont pas nées :<br>
-                <b>-</b> TAFV < 0.3 le secteur est très attractif en fin de vie pour les exogènes. Cela peut refléter la présence d'hôpitaux, d'EHPAD
-                ou de zones de retraite résidentielle.<br> 
-                <b>-</b> TAFV > 0.6 les décès sont majoritairement locaux (fort ancrage territorial).\n 
+                au moment du décès, des personnes qui n'y sont pas nées :\n
+                <b>-</b> TAFV < 0.3 le secteur est très attractif en fin de vie pour les exogènes.
+                Cela peut refléter la présence d'hôpitaux, d'EHPAD
+                ou de zones de retraite résidentielle.<br>
+                <b>-</b> TAFV > 0.6 les décès sont majoritairement locaux (fort ancrage territorial).
+                Cela correspond à une faible mobilité residentielle qui souligne une forte identité culturelle.\n 
                 </div>                
                 """,
                 unsafe_allow_html=True,
-            )
+            ) 
             
             fig_score, message_score,df_score = graph_scoring(df_fnl,nom_secteur,origine_secteur)
             
@@ -737,28 +837,48 @@ if restitution_des_valeurs:
                 # Preparation de l'alignement des graphes
                 # Colonnes côte à côte
                 # Mettre un espace entre les différents conteneurs
-                col1, col2 = st.columns([5,4.2])
+                col1, col2 = st.columns([4.8,4.5])
                 with col1:
                     
                     with st.container(border=True): 
-                        # Ouvre un pop-up
-                        with st.popover("ℹ️ À propos de ce graphique"):
-                            st.markdown(
-                                """
-                                <div style="background-color: #ADD8E6;
-                                    padding:12px;
-                                    border-radius:8px;
-                                    border-left:4px solid #1f77b4; ">
-                                Le taux d'attractivité decoupe le graphe en 3 zones : <br>
-                                <b>-</b> Zone à forte présence d'exogènes <br>
-                                <b>-</b> Zone neutre <br>
-                                <b>-</b> Zone à forte présence d'originaires <br>
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            )
+                        
                          # Tabs ds Streamlit
-                        tab11,  = st.tabs(["📊 Poids des secteurs"])
+                        if not origine_secteur=="origine_ville":
+                            # Ouvre un pop-up
+                            with st.popover("ℹ️ À propos de ce graphique"):
+                                st.markdown(
+                                    """
+                                    <div style="background-color: #ADD8E6;
+                                        padding:12px;
+                                        border-radius:8px;
+                                        border-left:4px solid #1f77b4; ">
+                                    Le taux d'attractivité découpe le graphe en 3 zones : <br>
+                                    <b>-</b> Zone à forte présence d'exogènes dans ce secteur <br>
+                                    <b>-</b> Zone neutre <br>
+                                    <b>-</b> Zone à forte présence d'originaires dans ce secteur <br>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
+                                )
+                            tab11,  = st.tabs(["📊 Poids des secteurs"])
+                        else:
+                            # Ouvre un pop-up
+                            with st.popover("ℹ️ À propos de ce graphique"):
+                                st.markdown(
+                                    """
+                                    <div style="background-color: #ADD8E6;
+                                        padding:12px;
+                                        border-radius:8px;
+                                        border-left:4px solid #1f77b4; ">
+                                    Représentation des origines des défunts pour cette ville 
+                                        ou arrondissement : <br>
+                                    <b>-</b> Proportion des originaires et des éxogènes <br>
+                                    <b>-</b> Top 5 de la provenance des exogènes <br>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
+                                )                                
+                            tab11,  = st.tabs(["📊 Proportion d'originaire/exogène  "])
 
                         with tab11:                                 
                             st.plotly_chart(fig_score, width="stretch", key="Graphe_score")             
@@ -768,23 +888,40 @@ if restitution_des_valeurs:
                     with st.container(border=True):                        
                         # Ouvre un pop-up
                         with st.popover("ℹ️ À propos de ces graphiques"):
-                            st.markdown(
-                                """
-                                <div style="background-color: #ADD8E6;
-                                    padding:12px;
-                                    border-radius:8px;
-                                    border-left:4px solid #1f77b4; ">
-                                Ces deux visualisations présentent les extrêmes du TAFV afin de distinguer les territoires 
-                                d’ancrage des territoires à attractivité exogène.<br>
-                                <b>-</b> Les 5 meilleures cellules apparaissent avec un cadre noir. 
-                                Leur rang est spécifié dans l'encadré.<br>
-                                <b>-</b> La meilleur classe d'age et le meilleur secteur sont mis en surbrillance.
-                                </div>
-                                """,
-                                unsafe_allow_html=True,
-                            ) 
+                            if not origine_secteur=="origine_ville":
+                                st.markdown(
+                                    """
+                                    <div style="background-color: #ADD8E6;
+                                        padding:12px;
+                                        border-radius:8px;
+                                        border-left:4px solid #1f77b4; ">
+                                    Ces deux visualisations présentent le top 5 des meilleurs TAFV pour l'ancrage et l'attractivité
+                                    des territoires.<br>
+                                    <b>-</b> Les 5 meilleures cellules apparaissent avec un cadre noir. 
+                                    Leur rang est spécifié dans l'encadré.<br>
+                                    <b>-</b> La meilleur classe d'age et le meilleur secteur sont mis en surbrillance.
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
+                                )
+                            else:
+                                    st.markdown(
+                                    """
+                                    <div style="background-color: #ADD8E6;
+                                        padding:12px;
+                                        border-radius:8px;
+                                        border-left:4px solid #1f77b4; ">
+                                    Ces deux visualisations présentent les classes d'âge des défunts de cette ville en distinguant
+                                    les originaires des exogènes.<br>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True,
+                                ) 
                         # Tabs ds Streamlit
-                        tab21, tab22 = st.tabs(["📊 Top 5 des Originaires", "📈 Top 5 des Exogènes"])
+                        if not origine_secteur=="origine_ville":
+                            tab21, tab22 = st.tabs(["📊 Top 5 des Originaires", "📈 Top 5 des Exogènes"])
+                        else:
+                            tab21, tab22 = st.tabs(["📊 Classes d'âge originaires ", "📈 Classes d'âge exogènes "])
 
                         with tab21:
                             st.plotly_chart(fig_score_age, 
@@ -801,7 +938,7 @@ if restitution_des_valeurs:
                 # message de suppression d'éventuel secteur sans intéret
                 st.text(message_score) 
 
-            st.dataframe(df_fnl)
+            st.dataframe(df_fnl_m)
             
 
     

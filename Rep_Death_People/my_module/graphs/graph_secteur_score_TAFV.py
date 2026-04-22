@@ -26,7 +26,7 @@ def render_graph_score(df_fnl: pd.DataFrame,
             fig : une figure, graphe
             df  : dataframe
     '''
-        
+    height_val = 580
     # ---  Recupération de mes données via la classe ---
     class_filtrage = ClsScorePourViz(df_fnl, nom_secteur, origine_secteur)
     df_score,distance_origine, nb_origine, distance_non_origine, nb_non_origine = class_filtrage.score_secteur()
@@ -44,11 +44,11 @@ def render_graph_score(df_fnl: pd.DataFrame,
                 texte_sur_secteur_sans_deces_originaire = texte_sur_secteur_sans_deces_originaire+" "+ce_nom_secteur +"(s)"
                 texte_sur_secteur_sans_deces_originaire = texte_sur_secteur_sans_deces_originaire +" sans décès d'originaire. "
                 
-            if visualisation_secteur_sans_deces_originaire:
-                df_score_ = df_score[df_score[nb_origine]>0].sort_values(nom_secteur, ascending = False)
-            else:
-                df_score_ = df_score.sort_values(nom_secteur, ascending = False) 
-            
+            #if class_filtrage.nb_secteur_sans_deces_originaire == 0: #visualisation_secteur_sans_deces_originaire:
+            #    df_score_ = df_score[df_score[nb_origine]>0].sort_values(nom_secteur, ascending = False)
+            #else:
+            df_score_ = df_score.sort_values(nom_secteur, ascending = False) 
+
             if len(df_score_)>0:
                 fig.add_scatter(
                     y=df_score_[nom_secteur],
@@ -122,7 +122,7 @@ def render_graph_score(df_fnl: pd.DataFrame,
                     yaxis_title="Secteur",
                     plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
                     paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-                    height=750,
+                    height=height_val,
                     margin=dict(t=80, b=50, l=50, r=50), # permet d'avoir même hauteur de graphe
                     title_x=0.2, # centre le titre du graphique
                 )
@@ -201,7 +201,7 @@ def render_graph_score(df_fnl: pd.DataFrame,
                     yaxis_title="Secteur",
                     plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
                     paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-                    height=750,
+                    height=height_val,
                     margin=dict(t=80, b=50, l=50, r=50), # permet d'avoir même hauteur de graphe
                     title_x=0.2, # centre le titre du graphique
                 )
@@ -224,9 +224,9 @@ def render_graph_score(df_fnl: pd.DataFrame,
         fig.update_traces(textinfo="label+percent entry")
 
         fig.update_layout(
-            title=f"Pour les défunts du secteur {df_fnl.iloc[0,15]} : <br>Quelle est la proportion d'originaire et d'exogène ? <br>De quels départements proviennent les exogènes ?",
+            title=f"D'ou viennent les défunts du secteur {df_fnl.iloc[0,15]} ? <br>Quelles sont les proportions ? <br>",
             paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-            height=750,
+            height=height_val,
             width=400,
             )
         return fig, "", df_fnl  

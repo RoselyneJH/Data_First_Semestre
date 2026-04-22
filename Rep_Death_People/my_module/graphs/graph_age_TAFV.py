@@ -30,7 +30,7 @@ def identifier_item_de_la_list(ma_list:list):
 def render_graph_score_age(df_fnl: pd.DataFrame,
                             nom_secteur:str,
                             origine_secteur:str,
-                            meilleurs_secteurs_originaires:bool=True,
+                            secteurs_originaires:bool=True,
                             visualisation_secteur_sans_deces_originaire:bool=True) -> Tuple[go.Figure(), pd.DataFrame]:
     '''
     Initialise le traitement du graph
@@ -40,11 +40,13 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
             nom_secteur   : nom du secteur à traiter
             cette_origine : origine 
             seuil         : pour fixer un seuil de scoring
+            secteurs_originaires : affiche les originaires ou les exogènes
         
         Return:
             fig : une figure, graphe
             df  : dataframe
     '''   
+    height_val = 580
     # ---  Recupération de mes données via la classe ---
     class_filtrage = ClsScorePourViz(df_fnl ,nom_secteur,origine_secteur)
     df_score_,distance_origine,nb_origine, distance_non_origine, nb_non_origine = class_filtrage.score_secteur(True)
@@ -54,12 +56,12 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
         vision_ville = True
 
     if not vision_ville:
-        if visualisation_secteur_sans_deces_originaire: # variable à mettre en place en amont
-            if class_filtrage.nb_secteur_sans_deces_originaire == 0 :
-            # Alors on peut visualiser les secteurs car présence d'originaire
-                df_score = df_score_[df_score_[nb_origine]>0]         
-            else:    # secteurs sans originaires
-                df_score = df_score_.copy()
+        #if visualisation_secteur_sans_deces_originaire: # variable à mettre en place en amont
+        #if class_filtrage.nb_secteur_sans_deces_originaire == 0 :
+        # Alors on peut visualiser les secteurs car présence d'originaire
+        #    df_score = df_score_[df_score_[nb_origine]>0].sort_values(nom_secteur, ascending = False)       
+        #else:    # secteurs sans originaires
+        df_score = df_score_.sort_values(nom_secteur, ascending = False).copy()
 
         ordre_cls_age = ["0-1", "1-20", "20-35", "35-50", "50-65", "65-90", "90+"]
         # Je veux eviter de faire apparaitre des classes qui ne sont pas presentes dans 
@@ -67,7 +69,8 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
         # presentes :
         classes_presentes = df_score['classe_age'].unique()
         ordre_filtre = [c for c in ordre_cls_age if c in classes_presentes]
-        
+        #print("<<o>>",df_score.drop_duplicates(subset=[nom_secteur, 'classe_age']))
+
         # preparation au imshow
         df_heatmap = (
             df_score
@@ -89,13 +92,13 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
         # Liste des Secteurs
         sectors = df_heatmap.index.tolist()
 
-        if meilleurs_secteurs_originaires:
+        if secteurs_originaires:
             # Top n des cellules
             top_cells = df_heatmap.stack().nlargest(top_n)
             classes_extreme = mean_col[mean_col == mean_col.max()].index.tolist()
             secteurs_extreme = mean_row[mean_row == mean_row.max()].index.tolist()
             le_titre =CST_TITRE_ORIGINAIRE
-        else: # meilleur secteur exogène
+        else: # secteur exogène
             top_cells = df_heatmap.stack().nsmallest(top_n)
             classes_extreme = mean_col[mean_col == mean_col.min()].index.tolist()
             secteurs_extreme = mean_row[mean_row == mean_row.min()].index.tolist()
@@ -128,7 +131,7 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
             yaxis_title="Secteur",
             plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
             paper_bgcolor="#ADD8E6",
-            height=750,
+            height=height_val,
             margin=dict(t=80, b=50, l=50, r=50), # permet d'avoir même hauteur de graphe
             title_x=0.2, # centre le titre du graphique
         )
@@ -161,7 +164,7 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
                 line=dict(color="black", width=3)
             )
         # Performance des classes et secteurs 
-        couleur = "#AEA222" if meilleurs_secteurs_originaires else "purple" # 1 #FBFFCD #696D44 #696E3B
+        couleur = "#AEA222" if secteurs_originaires else "purple" # 1 #FBFFCD #696D44 #696E3B
         # #938C4E
         # Meilleur classe :
         fig.update_xaxes(
@@ -180,7 +183,28 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
             ]
         )
         return fig, df_heatmap
-    else:        
+    else:
+        palette_originaire = [
+            "#FFFDE7",
+            "#FFF59D",
+            "#FFEE58",
+            "#DCE775",
+            "#C0CA33",
+            "#9CCC65",
+            "#7CB342",
+            "#A9E24E"
+        ]
+        palette_exogene = [
+            "#C8A2D6",   # violet pastel
+            "#F29E9E",  # rouge pastel
+            "#F2C57C",  # jaune chaud doux
+            "#9AD0A5",  # vert pastel
+            "#6FC3B2",  # vert-bleu doux
+            "#A1CBEF",  # bleu très clair
+            "#81B0E3",  # bleu de base
+            "#5A8FD8"   # bleu un peu plus soutenu
+        ]
+
         la_ville= df_fnl.iloc[0,15]
         liste_dep = class_filtrage.preparation_treemap(df_fnl,la_ville)
         
@@ -192,31 +216,34 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
         # creation du dataframe master sur lequel on effectue le graphe
         df_master = df_fnl[df_fnl['ville_deces']==la_ville]
 
-        if not  meilleurs_secteurs_originaires:            
+        if not secteurs_originaires:            
             # tri des departements
             df_top_ordre = df_top.query("origine!='Autres' & origine!=@la_ville").sort_values('valeur', 
                                         ascending=False)['origine'].to_list()           
-            secteur_naissance = 'nom_departement_naissance'  
+            secteur_naissance = 'nom_departement_naissance' 
+            palette=palette_exogene            
         else:
             # tri des departements pour originaires
             df_top_ordre = df_top.query("origine==@la_ville").sort_values('valeur', ascending=False)['origine'].to_list()
             secteur_naissance = 'ville_naissance' 
+            palette=palette_originaire
 
         df_merge = df_master.merge( df_top,left_on=secteur_naissance, 
                                 right_on='origine', how='left')
         df_merge['top_dep'] = df_merge['top_dep'].fillna('N')
         df_merge_st_top = df_merge.query("top_dep =='O' ").groupby([secteur_naissance,'classe_age'],
                                                             as_index= False,
-                                                            observed=True).agg(nb=('idligne','count'))
-            
-        fig = px.bar(df_merge_st_top, x=secteur_naissance, y='nb',  color="classe_age",#animation_frame='event_dt', 
+                                                            observed=True).agg(nb=('idligne','count'))      
+        
+        fig = px.bar(df_merge_st_top, x=secteur_naissance, y='nb',  color="classe_age", 
             category_orders={
             "classe_age": ["0-1", "1-20", "20-35", "35-50", "50-65", "65-90", "90+" ],
             secteur_naissance: df_top_ordre},
-            color_discrete_sequence=px.colors.qualitative.Pastel,
-            barmode='group', title='your title')
+            color_discrete_sequence=palette,#px.colors.qualitative.T10,
+            barmode='group', 
+            title='your title')
         
-        if df_fnl[df_fnl['origine_ville']=="O"]['origine_ville'].shape[0]==0 and meilleurs_secteurs_originaires==True:
+        if df_fnl[df_fnl['origine_ville']=="O"]['origine_ville'].shape[0]==0 and secteurs_originaires==True:
             # Annotation pour notifier l'abscence d'originaire            
             fig.add_annotation(
                 x=0.5,                        # 
@@ -227,13 +254,18 @@ def render_graph_score_age(df_fnl: pd.DataFrame,
                 text="Pas d'originaire décédé pour cette ville",
                 font=dict(size=19, color="blue"),
             )
+        # preparation du titre du graphe
+        if secteurs_originaires:
+            le_titre = f"Ages des défunts à {df_fnl.iloc[0,15]}"
+        else:
+            le_titre = f"Origine et âges des défunts exogènes à {df_fnl.iloc[0,15]}"
 
         fig.update_layout(
-            title=f"Origine et âges des défunts à {df_fnl.iloc[0,15]}",
+            title=le_titre,
             xaxis = {"title" : "Secteur de naissance"},
             yaxis = {"title" : "Nombre de décès"},
             paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-            height=750,
+            height=height_val,
             width=500,
             )
         return fig, df_merge_st_top 

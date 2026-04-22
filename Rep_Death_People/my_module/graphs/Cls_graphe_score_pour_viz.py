@@ -45,6 +45,7 @@ class ClsScorePourViz:
                     deces originaires, distance selon age
                     Utilisation de Polars pour performance
         '''
+        profondeur_resultat = 100
         # Petite manip liée à un décallage des niveaux de secteur
         le_string = self.ce_ss_secteur    
         cette_origine_1 ="origine_"+le_string.replace("_deces","")
@@ -153,8 +154,8 @@ class ClsScorePourViz:
                                         'item_distance_origine': distance_origine, 
                                         },inplace =True)
         
-        df_cumul_secteur = df_cumul_secteur_.sort_values(nb_non_origine, ascending=False).head(50)
-        
+        df_cumul_secteur = df_cumul_secteur_.sort_values(nb_non_origine, ascending=False).head(profondeur_resultat)
+                
         self.df_cumul_secteur = df_cumul_secteur
         self.nb_origine = nb_origine
 
