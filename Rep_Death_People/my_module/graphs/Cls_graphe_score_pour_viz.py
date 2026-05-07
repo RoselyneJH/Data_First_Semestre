@@ -9,9 +9,9 @@ from typing import Tuple
 SECTEUR_EXOGENE = "Exogènes majoritaires sur ces zones"
 SECTEUR_ORIGINAIRE = "Originaires majoritaires sur ces zones"
 SECTEUR_NEUTRE = "Equilibre Originaires - Exogènes sur ces zones"
+PAGE_SIZE = 20 # nombre de secteur affiché dans le graphe
 
-class ClsScorePourViz:
-
+class ClsScorePourViz:    
 
     def __init__(self, df:pd.DataFrame, ce_ss_secteur:str, cette_origine:str):
         """
@@ -33,7 +33,10 @@ class ClsScorePourViz:
         self._nb_secteur_sans_deces_originaire = 0
 
         self.liste_departement_naissance_treemap=list()
-             
+        # une liste de dataframe
+        self.liste_df_cumul_secteur=[]
+        # nombre de pages
+        self.pages = 0           
 
     def score_secteur(self, filtrer_age:bool = False)-> Tuple[pd.DataFrame, str, str, str, str] :
         '''
@@ -45,7 +48,7 @@ class ClsScorePourViz:
                     deces originaires, distance selon age
                     Utilisation de Polars pour performance
         '''
-        profondeur_resultat = 100
+        #profondeur_resultat = 100 # pas sure de pertinence !
         # Petite manip liée à un décallage des niveaux de secteur
         le_string = self.ce_ss_secteur    
         cette_origine_1 ="origine_"+le_string.replace("_deces","")
@@ -69,10 +72,13 @@ class ClsScorePourViz:
                 liste_a_traiter.append(item)
             if item == self.ce_ss_secteur and ind>0:
                 position = ind
-        
+
+        la_liste_sans_filtre_age = liste_a_traiter.copy()
+
         if filtrer_age:
             # ajout du dernier critère si souhaité : age,  
-            liste_a_traiter.append("classe_age")
+            #la_liste_sans_filtre_age = liste_a_traiter[-1]
+            liste_a_traiter.append("classe_age")  
 
         # transforme pandas en polar 
         mon_pl = pl.DataFrame(self.df)
@@ -83,6 +89,7 @@ class ClsScorePourViz:
             .filter(pl.col("pays_naissance").is_in(["FRANCE"] )) 
             .group_by(liste_a_traiter)
             .agg([
+                pl.col("idligne").count().alias("deces"),
                 # Nombre de non-originaires
                 (pl.col(cette_origine) == "N").sum().alias("item_nb_non_origine"),
                 # Nombre d'originaires
@@ -107,61 +114,63 @@ class ClsScorePourViz:
                 (pl.col("item_nb_origine")+pl.col("item_nb_non_origine") )
                 ).round(3).alias("TAFV") # Taux d'attractivité de fin de vie
             ])
-            # Indice de Mobilité différentielle IMD
-            .with_columns([
-                pl.when(
-                (pl.col("item_distance_origine") == 0) | pl.col("item_distance_origine").is_null()
-                ).then(
-                    0
-                ).otherwise(
-                ((pl.col("item_distance_origine"))/
-                (pl.col("item_distance_non_origine")+pl.col("item_distance_origine")) )
-                ).round(2).alias("IMD") #  
-            ])
-            # Indice de mobilité différentielle normalisé 
-            .with_columns([
-                pl.when(pl.col("IMD").is_null()).then(None).otherwise(
-                ((pl.col("IMD")-pl.col("IMD").min())/
-                (pl.col("IMD").max()-pl.col("IMD").min())
-                )).alias("IMD_nor") #  
-            ])
-            .with_columns([
-                ((pl.col("item_nb_non_origine") - pl.col("item_nb_non_origine").min())/
-                (pl.col("item_nb_non_origine").max() - pl.col("item_nb_non_origine").min())
-                ).alias("non_orig_norm"),
-                ((pl.col("item_nb_origine") - pl.col("item_nb_origine").min()) /
-                (pl.col("item_nb_origine").max() - pl.col("item_nb_origine").min())
-                ).alias("orig_norm"),
-                ((pl.col("item_distance_non_origine") - pl.col("item_distance_non_origine").min()) /
-                (pl.col("item_distance_non_origine").max() - pl.col("item_distance_non_origine").min())
-                ).alias("distance_non_orig_norm"),            
-            ])
-            .with_columns([
-                ((0.6 * pl.col("orig_norm") ) + (0.2 * pl.col("non_orig_norm")) # Formule du scoring
-                +(0.1 * (1 - pl.col("distance_non_orig_norm"))))
-                .alias("score"),
-                ])
+            
             .collect()
             )  
+
+        pl_cumul_secteur_restreint = (
+            mon_pl.lazy()
+            .filter(pl.col("pays_naissance").is_in(["FRANCE"] )) 
+            .group_by(la_liste_sans_filtre_age)
+            .agg(
+                #(pl.col(cette_origine) == "N").sum().alias("item_nb_non_origine")
+                (pl.col("idligne").count().alias("deces"))
+                ) #,
+
+            .with_columns(
+                #pl.col("item_nb_non_origine")
+                pl.col("deces")
+                .rank(descending=True)
+                #.over(la_liste_sans_filtre_age)
+                .alias("rang_deces").cast(pl.Int64)
+            )
+            .collect()
+        )
+
+        df = pl_cumul_secteur.join(pl_cumul_secteur_restreint, on=la_liste_sans_filtre_age, how="inner")
         
+        # Je supprime cette colonne :
+        df = df.drop("deces_right")
+
         # transforme polar en pandas)
-        df_cumul_secteur_ = pl_cumul_secteur.to_pandas()
+        df_cumul_secteur_ = df.to_pandas()
         
         # renommer les colonnes correctement 
         df_cumul_secteur_.rename(columns={'item_nb_non_origine': nb_non_origine,
                                         'item_nb_origine': nb_origine,
                                         'item_distance_non_origine': distance_non_origine,
                                         'item_distance_origine': distance_origine, 
-                                        },inplace =True)
+                                        },inplace =True)        
         
-        df_cumul_secteur = df_cumul_secteur_.sort_values(nb_non_origine, ascending=False).head(profondeur_resultat)
+        df_cumul_secteur = df_cumul_secteur_.sort_values("deces", ascending=False) #.head(profondeur_resultat)
+         
+        
+        # Nombre de page à visualiser pour parcourir l'ensemble des données
+        reste = 1 if (df_cumul_secteur_['rang_deces'].max() % PAGE_SIZE) > 0 else 0 # opérateur ternaire 
+        self.pages = df_cumul_secteur_["rang_deces"].max()//PAGE_SIZE + reste     # calcul du nombre de pages
+
+        # Chargement de la liste des dataframes        
+        p=1
+        for i in range(1,self.pages+1):                                
+            self.liste_df_cumul_secteur.append(df_cumul_secteur_[(df_cumul_secteur_['rang_deces'] >= p) & (df_cumul_secteur_['rang_deces'] < p + PAGE_SIZE )])          
+            p = (i*PAGE_SIZE)+1
                 
         self.df_cumul_secteur = df_cumul_secteur
         self.nb_origine = nb_origine
 
         self._nb_secteur_sans_deces_originaire = self.df_cumul_secteur[self.df_cumul_secteur[self.nb_origine]==0].shape[0]
          
-        return df_cumul_secteur,distance_origine,nb_origine, distance_non_origine, nb_non_origine
+        return df_cumul_secteur, "deces" #nb_non_origine
 
     def identification_top_treemap(self, df:pd.DataFrame,la_ville:str, top_n:int=5):
         '''
@@ -220,8 +229,7 @@ class ClsScorePourViz:
                     renvoie un dataframe pour le treemap
         '''         
         niveau = "nom_departement_naissance"    
-        #liste_a_traiter=['nom_departement_naissance']        
-
+       
         mon_pl = pl.DataFrame(df)
 
         top,nb_orig,df_non_orig =  self.identification_top_treemap(df,la_ville)
@@ -296,6 +304,28 @@ class ClsScorePourViz:
        
         return self._nb_secteur_sans_deces_originaire
     
+    @property
+    def liste_des_df_secteur(self):
+        return self.liste_df_cumul_secteur
+
+    @property
+    def start(self, la_page:int=1):
+        '''
+            Args    : Par défaut la première page
+      
+            Return  : Debut de la page            
+        '''  
+        self.start = la_page * PAGE_SIZE
+        return self.start
     
+    @property
+    def start(self):
+        '''
+            Args    : None
+      
+            Return  : Fin de la page            
+        ''' 
+        self.end = self.start + PAGE_SIZE
+        return self.end
         
 

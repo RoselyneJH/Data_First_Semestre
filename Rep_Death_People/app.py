@@ -37,11 +37,13 @@ from pathlib import Path
 #)
 
 from my_module.graphs.graph_secteur_score_TAFV import (
-    render_graph_score as graph_scoring,
+    #render_graph_score as graph_scoring,
+    ClsGraphScore as graph_score
 )
 
 from my_module.graphs.graph_age_TAFV import (
-    render_graph_score_age as graph_score_age,
+    #render_graph_score_age as graph_score_age,
+    ClsGraphScoreAge as graph_age_TAFV
 )
 
 # -------------------------------------------------------------------------------------
@@ -49,6 +51,10 @@ from my_module.graphs.graph_age_TAFV import (
 # Permet de reduire la marge entre side bar et reste de l'écran
 # A définir, en premier dans une app. streamlit
 st.set_page_config(layout="wide")
+
+# --- Etat de pagination ---
+if "page" not in st.session_state:
+    st.session_state.page = 0
 
 # --- Fonction pour charger des fichiers GeoJSON ---
 @st.cache_data
@@ -162,7 +168,7 @@ def recherche_dominant_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
     serie_sex ='H' # par défaut
     if df_fnl_m['sex'].mode()[0] == '2': # femme
         serie_sex ='F'
-        serie_prenom= df_fnl_m[df_fnl_m['sex']=='2']['prenom'].mode()
+        serie_prenom = df_fnl_m[df_fnl_m['sex']=='2']['prenom'].mode()
     else: # Alors homme
         serie_prenom=df_fnl_m[df_fnl_m['sex']=='1']['prenom'].mode()
 
@@ -196,12 +202,14 @@ def statistique_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
         Pourcentage d'originaire, Pourcentage d'exogène, Indicateur TAFV, Age Moy Origi,
         Age Moy exo, distance mediane par classe d'âge
     """
+    # Dictionnaire 
+    stat_secteur = { }
+
     # Preparation des indicateurs
     nb_originaire = df_fnl_m[df_fnl_m[cette_origine_secteur] =='O'][cette_origine_secteur].count()
     nb_exogene = df_fnl_m[df_fnl_m[cette_origine_secteur] =='N'][cette_origine_secteur].count()
 
     # Pourcentage Originaire
-    #pct_originaire_b = round( nb_originaire/len(df_fnl_m),2)
     pct_originaire = str(round(100* nb_originaire/len(df_fnl_m),2))
 
     # Pourcentage Exogène
@@ -213,42 +221,27 @@ def statistique_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
     # Distance
     distance_med_originaire = str(df_fnl_m[df_fnl_m[cette_origine_secteur] =='O']['distance'].median()).replace(".0", " ")+" Km"
     distance_med_exogene = str(df_fnl_m[df_fnl_m[cette_origine_secteur] =='N']['distance'].median()).replace(".0", " ")+" Km"
-    #print("Cocu",distance_med_originaire)
 
     # Age moyen Origi/ Exoge
     age_moy_originaire = str(round(df_fnl_m[df_fnl_m[cette_origine_secteur] =='O']['age'].mean(),0)).replace(".0", "")
     age_moy_exogene = str(round(df_fnl_m[df_fnl_m[cette_origine_secteur] =='N']['age'].mean() ,0)).replace(".0", "")
+
+    # Pourcentage de femme
+    pct_femme_e = str(round(df_fnl_m[(df_fnl_m[cette_origine_secteur] == 'N') & (df_fnl_m['sex'] == '2') ].shape[0],2))
+    pct_homme_e = str(round(df_fnl_m[(df_fnl_m[cette_origine_secteur] == 'N') & (df_fnl_m['sex'] == '1') ].shape[0],2))
+
+    pct_femme_o = str(round(df_fnl_m[(df_fnl_m[cette_origine_secteur] == 'O') & (df_fnl_m['sex'] == '2') ].shape[0],2))
+    pct_homme_o = str(round(df_fnl_m[(df_fnl_m[cette_origine_secteur] == 'O') & (df_fnl_m['sex'] == '1') ].shape[0],2))
+
+    stat_secteur['pct_originaire'] = pct_originaire 
+    stat_secteur['pct_exogene'] = pct_exogene 
+    stat_secteur['ind_TAFV'] = ind_TAFV 
+    stat_secteur['age_moy_originaire'] = age_moy_originaire 
+    stat_secteur['age_moy_exogene'] = age_moy_exogene 
+    stat_secteur['distance_med_originaire'] = distance_med_originaire 
+    stat_secteur['distance_med_exogene'] = distance_med_exogene 
     
-    # Calcul préparatoire
-    #rapport_distance = 1/(1+df_fnl_m['distance'].mean())
-    #rapport_distance_d = 1/(1+(df_fnl_m['distance'].mean()/df_fnl_m['distance'].quantile(0.25))) #
-    #rapport_age = df_fnl_m[df_fnl_m[cette_origine_secteur] =='O']['age'].mean()/(1+df_fnl_m[df_fnl_m[cette_origine_secteur] =='N']['age'].mean())
-    #V = np.log1p(len(df_fnl_m))
-
-    # Score de mobilité 
-    #score_mob = str(round(rapport_distance,3)).replace(".0", "")
-    #   M > 0.2 → très local
-    #   0.05 < M < 0.2 → local modéré
-    #   M < 0.05 → population mobile
-    
-    # Score d'âge
-    #score_age = str(round(rapport_age,2))
-    #print("mon score distance",score_mob,"score age ",score_age)
-    #S_age ≈ 1 → neutre
-    #S_age > 1 → ancrage local fort
-    #S_age < 1 → renouvellement / mobilité
-
-    # L’indice de stabilité client
-    #ind_sta_cl = str(round((1000 * (pct_originaire_b * rapport_distance_d * rapport_age * V) / (1 + V)),2))
-    #print("indice de stabilité client",ind_sta_cl)
-    #Score	Lecture métier
-    #0–20	secteur très instable (flux externe, mobilité forte)
-    #20–40	faible ancrage local
-    #40–60	équilibre local / externe
-    #60–80	secteur stable
-    #80–100	secteur très ancré localement
-
-    return pct_originaire, pct_exogene, ind_TAFV, age_moy_originaire, age_moy_exogene,distance_med_originaire,distance_med_exogene
+    return pct_originaire, pct_exogene, ind_TAFV, age_moy_originaire, age_moy_exogene, distance_med_originaire, distance_med_exogene
 
 # Récupération des regions et départements
 geojson_regions, geojson_departements = load_geojsons()
@@ -385,7 +378,6 @@ st.write("Auteur : R.Jean / Source : https://www.insee.fr/fr/statistiques")
 # Test si presence de valeurs apres selection :
 if len(df_final) > 0:
     valeur = df_final["nb_deces"].sum()   
-    #st.write(f"Déces sélectionnés : {valeur:,}".replace(",", " "))
     st.sidebar.info(f"Sélection décès : {valeur:,}".replace(",", " "))
     restitution_des_valeurs = True
 else:
@@ -684,9 +676,19 @@ if restitution_des_valeurs:
         )
 
         # ****** Metrics *******
-        df_fnl_m = df_fnl#.query("origine_nationale =='O'") # !!! ROSE
-        #print("df_fnl    >>>> ",df_fnl[df_fnl['origine_nationale']=='N']['ville_deces'].value_counts())
+        df_fnl_m = df_fnl
+    # -------------------------------------------------------------------------------------
 
+    # --- Gestion changement de filtres ---
+    current_filters = (region_selected, departement_selected, ville_selected, start, end)
+
+    if "filters" not in st.session_state:
+        st.session_state.filters = current_filters
+
+    if current_filters != st.session_state.filters:
+        st.session_state.filters = current_filters
+        st.session_state.page = 0  # reset pagination
+    
     # -------------------------------------------------------------------------------------
 
     # -----------------------------
@@ -727,8 +729,6 @@ if restitution_des_valeurs:
     st.sidebar.plotly_chart(fig, width="stretch")
     
     # --- Tabulations  ---
-
-    #(tabMain, tabAnalyse) = st.tabs(["📌Tableau de Bord","🔍 Analyse"])
     (tabMain,) = st.tabs(["🔍 Analyse "])
 
     # -----------------------------
@@ -747,10 +747,11 @@ if restitution_des_valeurs:
             st.markdown(
                 """
                 <div style="background-color: #ADD8E6; ">
-                Cette présentation consiste à distinguer deux types de territoires : ceux qui gagnent des seniors (Attractivité) 
+                Cette présentation consiste à distinguer deux types de territoires : ceux qui gagnent des seniors (Attractivité)
                 et ceux qui y restent pour leur vie (Ancrage).\n
-                Cette information est importante pour les sociétés d'assurances et complémentaires
-                santé. <br> Les territoires avec beaucoup de seniors indiquent potentiellement : <br>
+                
+                Cette information est importante pour les sociétés d'assurances et complémentaires santé. <br> Les territoires 
+                avec beaucoup de seniors indiquent potentiellement : <br>
                 <b>-</b> Des successions plus nombreuses à moyen terme <br>
                 <b>-</b> Des transferts d’épargne et d’immobilier <br>
                 <b>-</b> Une activation future de contrats d’assurance-vie <br>
@@ -795,50 +796,57 @@ if restitution_des_valeurs:
 
             pc_o, pc_e, ind_atfv, moy_age_o, moy_age_e,dis_med_o,dis_med_e = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
-            col_pc_originaire, col_pc_exogene, col_ind_tafv,col_moy_age_ori, col_moy_age_exo, col_dist_med_o,col_dist_med_e = st.columns([0.8, 0.8, 0.4, 0.9, 0.9,0.9,0.9])
+            col_pc_originaire, col_pc_exogene, col_moy_age_ori, col_moy_age_exo, col_dist_med_o,col_dist_med_e = st.columns([0.8, 0.8, 0.9, 0.9,0.9,0.9])
 
             col_pc_originaire.metric("Originaire %", pc_o)
             col_pc_exogene.metric("Exogène %", pc_e)
-            col_ind_tafv.metric("TAFV *", ind_atfv)
+            
             col_moy_age_ori.metric("Âge moy. Originaire", moy_age_o)
             col_moy_age_exo.metric("Âge moy. Exogène", moy_age_e)
             col_dist_med_o.metric("Distance med.* Originaire", dis_med_o)
             col_dist_med_e.metric("Distance med.* Exogène", dis_med_e)
-            #col_ind_sta_cl.metric("Ind. Stab Client", ind_sta_cl)
 
-            st.caption("Distance med.* = Distance médiane | TAFV * = Taux d'attractivité de fin de vie [0:1]")
-            #st.caption("TAFV.* = Taux d'attractivité de fin de vie [0:1]")
+            st.caption("Distance med.* = Distance médiane ")
+           
 
         with st.container(border=True):
-            st.subheader("Scoring")
+            st.subheader("Taux d'attractivité de fin de vie")
+            col_ind_tafv, _ = st.columns([0.4, 0.6]) # 0.6 car il n'accepte pas un cumul décimal (padding)
+            col_ind_tafv.metric("TAFV", ind_atfv) # , | TAFV * = Taux d'attractivité de fin de vie [0:1]
+
             st.markdown(
                 """
                 <div style="background-color: #ADD8E6; ">
-                L'indicateur présent dans ce graphe est relatif à la fin de vie :\n
                 📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir, 
                 au moment du décès, des personnes qui n'y sont pas nées :\n
                 <b>-</b> TAFV < 0.3 le secteur est très attractif en fin de vie pour les exogènes.
-                Cela peut refléter la présence d'hôpitaux, d'EHPAD
-                ou de zones de retraite résidentielle.<br>
+                Cela peut refléter la présence d'hôpitaux, d'EHPAD ou de zones de retraite résidentielle.<br>
                 <b>-</b> TAFV > 0.6 les décès sont majoritairement locaux (fort ancrage territorial).
-                Cela correspond à une faible mobilité residentielle qui souligne une forte identité culturelle.\n 
+                Cela correspond à une faible mobilité residentielle soulignant une forte identité culturelle.\n 
                 </div>                
                 """,
                 unsafe_allow_html=True,
             ) 
+             
+            ce_graph_TAFV = graph_score(df_fnl,nom_secteur,origine_secteur)
+            fig_score, message_score,df_score = ce_graph_TAFV.render_graph_score(
+                page=st.session_state.page
+            )
             
-            fig_score, message_score,df_score = graph_scoring(df_fnl,nom_secteur,origine_secteur)
+            ce_graph_TAFV_age = graph_age_TAFV(df_fnl,nom_secteur,origine_secteur) 
+            fig_score_age = ce_graph_TAFV_age.render_graph_score_age(
+                page=st.session_state.page) # , df_score_age
             
-            fig_score_age, df_score_age = graph_score_age(df_fnl,nom_secteur,origine_secteur) 
-            fig_score_age_Exo, df_score_age = graph_score_age(df_fnl,nom_secteur,origine_secteur,False)          
+            fig_score_age_Exo = ce_graph_TAFV_age.render_graph_score_age(
+                False,
+                page=st.session_state.page)                     # , df_score_age_exo
 
             with st.container(border=True):
-                 
-                # Preparation de l'alignement des graphes
+                # Préparation de l'alignement des graphes
                 # Colonnes côte à côte
                 # Mettre un espace entre les différents conteneurs
-                col1, col2 = st.columns([4.8,4.5])
-                with col1:
+                col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9,0.7,4.6])
+                with col_TAFV:
                     
                     with st.container(border=True): 
                         
@@ -882,8 +890,27 @@ if restitution_des_valeurs:
 
                         with tab11:                                 
                             st.plotly_chart(fig_score, width="stretch", key="Graphe_score")             
-                    
-                with col2:
+
+                with col_separateur:
+
+                    with st.container(border=False,horizontal_alignment="center", 
+                        vertical_alignment="center",height = 720): 
+                        with st.container(border=False,horizontal_alignment="center",
+                                vertical_alignment="center", width = "content"):
+                            st.write(f"{st.session_state.page + 1} / {ce_graph_TAFV.nombre_de_page}")
+                            
+                        be_disabled = True if st.session_state.page == 0 else False
+                        if st.button("⬆️",disabled=be_disabled,help ="Secteurs à mortalité plus forte") :
+                            st.session_state.page -= 1
+                            
+                        be_disabled = True if st.session_state.page == ce_graph_TAFV.nombre_de_page-1 else False
+                        if st.button("⬇️",disabled=be_disabled,help ="Secteurs à mortalité plus faible") and not be_disabled:
+                            st.session_state.page += 1 
+
+                    st.session_state.page = max(0, st.session_state.page)
+                    st.session_state.page = min(st.session_state.page, ce_graph_TAFV.nombre_de_page)
+
+                with col_age_TAFV:
                     
                     with st.container(border=True):                        
                         # Ouvre un pop-up
@@ -938,7 +965,6 @@ if restitution_des_valeurs:
                 # message de suppression d'éventuel secteur sans intéret
                 st.text(message_score) 
 
-            st.dataframe(df_fnl_m)
             
 
     
