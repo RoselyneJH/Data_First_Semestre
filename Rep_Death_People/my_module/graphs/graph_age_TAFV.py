@@ -73,10 +73,7 @@ class ClsGraphScoreAge:
             vision_ville = True
 
         if not vision_ville:
-            #if visualisation_secteur_sans_deces_originaire: # variable à mettre en place en amont
-            #if class_filtrage.nb_secteur_sans_deces_originaire == 0 :
-            # Alors on peut visualiser les secteurs car présence d'originaire
-            
+                        
             df_score_= self.class_filtrage.liste_des_df_secteur[page] 
             df_score = df_score_.sort_values(self.nom_secteur, ascending = False).copy()
 
@@ -163,7 +160,7 @@ class ClsGraphScoreAge:
                     y=row_index,
                     text=f"{i}",
                     showarrow=False,
-                    font=dict(size=14, color="black")
+                    font=dict(size=14, color="white") 
                 )
             # encadre les cellules 
             for (secteur, classe), value in top_cells.items():

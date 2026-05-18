@@ -832,14 +832,13 @@ if restitution_des_valeurs:
             fig_score, message_score,df_score = ce_graph_TAFV.render_graph_score(
                 page=st.session_state.page
             )
-            
             ce_graph_TAFV_age = graph_age_TAFV(df_fnl,nom_secteur,origine_secteur) 
             fig_score_age = ce_graph_TAFV_age.render_graph_score_age(
-                page=st.session_state.page) # , df_score_age
+                page=st.session_state.page) 
             
             fig_score_age_Exo = ce_graph_TAFV_age.render_graph_score_age(
                 False,
-                page=st.session_state.page)                     # , df_score_age_exo
+                page=st.session_state.page)                   
 
             with st.container(border=True):
                 # Préparation de l'alignement des graphes
@@ -892,23 +891,24 @@ if restitution_des_valeurs:
                             st.plotly_chart(fig_score, width="stretch", key="Graphe_score")             
 
                 with col_separateur:
-
-                    with st.container(border=False,horizontal_alignment="center", 
-                        vertical_alignment="center",height = 720): 
-                        with st.container(border=False,horizontal_alignment="center",
-                                vertical_alignment="center", width = "content"):
-                            st.write(f"{st.session_state.page + 1} / {ce_graph_TAFV.nombre_de_page}")
-                            
-                        be_disabled = True if st.session_state.page == 0 else False
-                        if st.button("⬆️",disabled=be_disabled,help ="Secteurs à mortalité plus forte") :
-                            st.session_state.page -= 1
-                            
-                        be_disabled = True if st.session_state.page == ce_graph_TAFV.nombre_de_page-1 else False
-                        if st.button("⬇️",disabled=be_disabled,help ="Secteurs à mortalité plus faible") and not be_disabled:
-                            st.session_state.page += 1 
-
-                    st.session_state.page = max(0, st.session_state.page)
-                    st.session_state.page = min(st.session_state.page, ce_graph_TAFV.nombre_de_page)
+                    # je fais apparaitre unqiement dans une vue nat, region ou departement
+                    if origine_secteur !='origine_ville':    
+                        with st.container(border=False,horizontal_alignment="center", 
+                            vertical_alignment="center",height = 720): 
+                            with st.container(border=False,horizontal_alignment="center",
+                                    vertical_alignment="center", width = "content"):
+                                st.info(f"{st.session_state.page + 1} / {ce_graph_TAFV.nombre_de_page}")
+                                
+                            be_disabled = True if st.session_state.page == 0 else False
+                            if st.button("⬆️",disabled=be_disabled,help ="Secteurs à mortalité forte") :
+                                st.session_state.page -= 1
+                                
+                            be_disabled = True if st.session_state.page == ce_graph_TAFV.nombre_de_page-1 else False
+                            if st.button("⬇️",disabled=be_disabled,help ="Secteurs à mortalité faible") and not be_disabled:
+                                st.session_state.page += 1
+                                
+                        st.session_state.page = max(0, st.session_state.page)
+                        st.session_state.page = min(st.session_state.page, ce_graph_TAFV.nombre_de_page)
 
                 with col_age_TAFV:
                     

@@ -28,7 +28,7 @@ class ClsGraphScore:
         self.origine_secteur = origine_secteur
 
         self.class_filtrage = ClsScorePourViz(self.df_fnl, self.nom_secteur, self.origine_secteur)
-        self.df_score, self.nb_non_origine = self.class_filtrage.score_secteur()
+        self.df_score, self.nb_deces = self.class_filtrage.score_secteur()
         self.pages = self.class_filtrage.pages
 
     @property
@@ -48,11 +48,6 @@ class ClsGraphScore:
                 df  : dataframe
         '''
         height_val = 580
-        # ---  Recupération de mes données via la classe ---
-        #class_filtrage = ClsScorePourViz(df_fnl, nom_secteur, origine_secteur)
-        #df_score, nb_non_origine = class_filtrage.score_secteur()
-
-        #df_score = self.df_score
         texte_sur_secteur_sans_deces_originaire = ""
         
         # graphe :
@@ -80,14 +75,14 @@ class ClsGraphScore:
                         marker=dict(
                             colorscale="Viridis",        # affiche le type de couleur de la colorbar
                             colorbar=dict(# personnalise la colorbar
-                                title="Décès des exogènes",#
+                                title="Décès",#
                                 tickmode="array",   # ← IMPORTANT
                             ),
-                            size=df_score_[self.nb_non_origine], #df_score[nb_non_origine], # affiche la taille en fonction de cette valeur
-                            color=df_score_[self.nb_non_origine],#+df_score[nb_non_origine] , # affiche la couleur en fonction de cette valeur
+                            size=df_score_[self.nb_deces], #df_score[nb_non_origine], # affiche la taille en fonction de cette valeur
+                            color=df_score_[self.nb_deces],#+df_score[nb_non_origine] , # affiche la couleur en fonction de cette valeur
                             showscale=True,              # affiche la colorbar
                             sizemode="area", # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
-                            sizeref=2.*max(df_score_[self.nb_non_origine])/(40.**2),
+                            sizeref=2.*max(df_score_[self.nb_deces])/(40.**2),
                             opacity=0.6,
                         ),
                     )           
@@ -162,13 +157,11 @@ class ClsGraphScore:
                                 title="Décès",#
                                 tickmode="array",   # ← IMPORTANT
                             ),
-                            #size=df_score[self.nb_non_origine], # affiche la taille en fonction de cette valeur
-                            #color=df_score[self.nb_non_origine], # affiche la couleur en fonction de cette valeur
-                            size=df_score[self.nb_non_origine], # affiche la taille en fonction de cette valeur
-                            color=df_score[self.nb_non_origine], # affiche la couleur en fonction de cette valeur
+                            size=df_score[self.nb_deces], # affiche la taille en fonction de cette valeur
+                            color=df_score[self.nb_deces], # affiche la couleur en fonction de cette valeur
                             showscale=True,              # affiche la colorbar
                             sizemode="area", # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
-                            sizeref=2.*max(self.df_score[self.nb_non_origine])/(40.**2),
+                            sizeref=2.*max(self.df_score[self.nb_deces])/(40.**2),
                             opacity=0.6,
                         ),
                     )           

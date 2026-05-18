@@ -77,7 +77,6 @@ class ClsScorePourViz:
 
         if filtrer_age:
             # ajout du dernier critère si souhaité : age,  
-            #la_liste_sans_filtre_age = liste_a_traiter[-1]
             liste_a_traiter.append("classe_age")  
 
         # transforme pandas en polar 
@@ -86,7 +85,7 @@ class ClsScorePourViz:
         # FILTRAGE/GROUPBY
         pl_cumul_secteur = (
             mon_pl.lazy()
-            .filter(pl.col("pays_naissance").is_in(["FRANCE"] )) 
+            .filter(pl.col("pays_naissance").is_in(["FRANCE"] ))  # !
             .group_by(liste_a_traiter)
             .agg([
                 pl.col("idligne").count().alias("deces"),
@@ -117,7 +116,8 @@ class ClsScorePourViz:
             
             .collect()
             )  
-
+        # En ajoutant la clonne age à ntre dataframe, on perd l'ordre des secteurs,
+        # d'ou l'interet de ce regroupement => conserver l'ordre
         pl_cumul_secteur_restreint = (
             mon_pl.lazy()
             .filter(pl.col("pays_naissance").is_in(["FRANCE"] )) 
@@ -139,7 +139,7 @@ class ClsScorePourViz:
 
         df = pl_cumul_secteur.join(pl_cumul_secteur_restreint, on=la_liste_sans_filtre_age, how="inner")
         
-        # Je supprime cette colonne :
+        # Je supprime cette colonne resultant du merge :
         df = df.drop("deces_right")
 
         # transforme polar en pandas)
@@ -152,14 +152,20 @@ class ClsScorePourViz:
                                         'item_distance_origine': distance_origine, 
                                         },inplace =True)        
         
-        df_cumul_secteur = df_cumul_secteur_.sort_values("deces", ascending=False) #.head(profondeur_resultat)
-         
+        df_cumul_secteur = df_cumul_secteur_.sort_values("deces", ascending=False)          
         
         # Nombre de page à visualiser pour parcourir l'ensemble des données
         reste = 1 if (df_cumul_secteur_['rang_deces'].max() % PAGE_SIZE) > 0 else 0 # opérateur ternaire 
-        self.pages = df_cumul_secteur_["rang_deces"].max()//PAGE_SIZE + reste     # calcul du nombre de pages
+        # C'est le script que j'aurais du mettre en place mais je préfère plafonner :
+        #df_cumul_secteur_["rang_deces"].max()//PAGE_SIZE + reste # <= c'est le alcul du nombre de pages
 
-        # Chargement de la liste des dataframes        
+        # identifier le nombre de page max
+        page_max = df_cumul_secteur_["rang_deces"].max()//PAGE_SIZE + reste
+        
+        # Mais je dois plafonner le nmbre de pages car j'ai des pbs de performance à 3 oiu moins selon cas
+        self.pages = page_max if page_max <= 4 else 4
+        
+        # Chargement de la liste des dataframes  pour simuler les differentes pages      
         p=1
         for i in range(1,self.pages+1):                                
             self.liste_df_cumul_secteur.append(df_cumul_secteur_[(df_cumul_secteur_['rang_deces'] >= p) & (df_cumul_secteur_['rang_deces'] < p + PAGE_SIZE )])          
@@ -167,12 +173,12 @@ class ClsScorePourViz:
                 
         self.df_cumul_secteur = df_cumul_secteur
         self.nb_origine = nb_origine
-
+        # recupère le nombre de secteur sans deces originaire
         self._nb_secteur_sans_deces_originaire = self.df_cumul_secteur[self.df_cumul_secteur[self.nb_origine]==0].shape[0]
          
         return df_cumul_secteur, "deces" #nb_non_origine
 
-    def identification_top_treemap(self, df:pd.DataFrame,la_ville:str, top_n:int=5):
+    def identification_top_treemap(self, df:pd.DataFrame, la_ville:str, top_n:int=5):
         '''
         Permet de constituer le top pour le treemap
             Args :  
@@ -188,7 +194,7 @@ class ClsScorePourViz:
         mon_pl = pl.DataFrame(df)
 
         nb_orig =  (mon_pl.lazy()
-                    .filter(pl.col("ville_deces")==la_ville)  #.is_in( [ville] )) 
+                    .filter(pl.col("ville_deces")==la_ville)  
                     .group_by(liste_a_traiter)
                     .agg([                       
                         (pl.col("origine_ville") == "O").sum().alias("nb"),
@@ -291,8 +297,7 @@ class ClsScorePourViz:
                 if nb_valeur_sup>nb_valeur_inf:
                     return SECTEUR_ORIGINAIRE
                 else:
-                    return SECTEUR_EXOGENE
-                
+                    return SECTEUR_EXOGENE                
     
     @property
     def nb_secteur_sans_deces_originaire(self):
