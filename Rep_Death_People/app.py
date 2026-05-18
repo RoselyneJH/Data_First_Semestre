@@ -946,21 +946,21 @@ if restitution_des_valeurs:
                                 ) 
                         # Tabs ds Streamlit
                         if not origine_secteur=="origine_ville":
-                            tab21, tab22 = st.tabs(["📊 Top 5 des Originaires", "📈 Top 5 des Exogènes"])
+                            tab21, tab22 = st.tabs(["📈 Top 5 des Exogènes","📊 Top 5 des Originaires" ])
                         else:
-                            tab21, tab22 = st.tabs(["📊 Classes d'âge originaires ", "📈 Classes d'âge exogènes "])
+                            tab21, tab22 = st.tabs(["📈 Classes d'âge exogènes ","📊 Classes d'âge originaires "])
 
                         with tab21:
-                            st.plotly_chart(fig_score_age, 
-                                            width="stretch", 
-                                            key="Graphe_score_age",
-                                            ) 
-
-                        with tab22:
                             st.plotly_chart(fig_score_age_Exo, 
                                               width="stretch", 
                                               key="Graphe_score_age_Exo",
                                                ) 
+                            
+                        with tab22:
+                            st.plotly_chart(fig_score_age, 
+                                            width="stretch", 
+                                            key="Graphe_score_age",
+                                            ) 
                 
                 # message de suppression d'éventuel secteur sans intéret
                 st.text(message_score) 
