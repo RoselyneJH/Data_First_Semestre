@@ -10,43 +10,31 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly
-#from streamlit_plotly_events import plotly_events
+
 import os
 
 import requests
 
 from typing import List, Dict, Union, Tuple
 
-#from streamlit_plotly_events import plotly_events
 import polars as pl
 import numpy as np
 from pathlib import Path
 
 from my_module.Cls_load_data_pour_viz import ClsLoadDataPourViz
 from pathlib import Path
-#from my_module.graphs.graph_bar_origine import render_graph_bar_origine as graph_bar_origine
 
-#from my_module.graphs.graph_bar_month import render_graph_bar_month as graph_bar_month
 
-#from my_module.graphs.graph_bar_month import (
-#    render_graph_bar_class_age_month as graph_bar_class_age_month,
-#)
-
-#from my_module.graphs.graph_heat_map import (
-#    render_graph_heat_map_origine as graph_heat_map_origine,
-#)
-
-from my_module.graphs.graph_secteur_score_TAFV import (
-    #render_graph_score as graph_scoring,
+from my_module.graphs.graph_secteur_score import ( # type: ignore
     ClsGraphScore as graph_score
 )
 
-from my_module.graphs.graph_age_TAFV import (
-    #render_graph_score_age as graph_score_age,
-    ClsGraphScoreAge as graph_age_TAFV
+from my_module.graphs.graph_secteur_score_age import ( # type: ignore
+    ClsGraphScoreAge as graph_score_age
 )
 
 # -------------------------------------------------------------------------------------
+#
 
 # Permet de reduire la marge entre side bar et reste de l'écran
 # A définir, en premier dans une app. streamlit
@@ -149,6 +137,38 @@ def load_dataframe()-> pd.DataFrame:
 
     return df_grp, df
 
+def moyenne_ecart_type_national(df_fnl: pd.DataFrame)-> Tuple:
+    '''
+    Args :
+        Dataframe national
+        valeur dont on doit calculer moyenne et ecart-type
+        Ajout d'un filtre age
+    Return :
+        la moyenne
+        l'ecart-type    
+    '''
+    mon_pl = pl.DataFrame(df_fnl)
+    
+    df_polars = (mon_pl.lazy()
+            .filter(pl.col("pays_naissance").is_in(["FRANCE"] ))
+            .select([
+                ((pl.col("distance") + 1).log()).mean().alias("moy_distance"),  # mobilité moyenne
+                ((pl.col("distance") + 1).log()).std().alias("std_distance"),]) # ecart type de la mobilité              
+            .collect())
+    
+    df_polars_age = (mon_pl.lazy()
+            .filter(pl.col("pays_naissance").is_in(["FRANCE"] ))
+            .group_by("classe_age")
+            .agg([
+                ((pl.col("distance") + 1).log()).mean().alias("moy_distance"),  # mobilité moyenne
+                ((pl.col("distance") + 1).log()).std().alias("std_distance"),]) # ecart type de la mobilité              
+            .collect())
+        
+    df = df_polars.to_pandas()
+    df_age = df_polars_age.to_pandas()
+    
+    return df,df_age#['std_distance'],df['moy_distance']
+    
 def recherche_dominant_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
                                    cette_origine_secteur:str)-> Tuple:
     """
@@ -365,7 +385,11 @@ else:
     df_fnl_ = df_dpt[df_dpt["ville_deces"] == ville_selected]
 
 # Slider
-start, end = st.sidebar.slider("Âge :", 0, 105, (20, 85))
+start, end = st.sidebar.slider("Âge :", 0, 105, (20, 85),
+        disabled=(departement_selected != "Tous les départements") | (region_selected != "Toutes les régions" ),
+        help="Déselectionner le département et/ou la région pour activer le slider")
+        # Je dois recalculer au niveau national ecart-type et moyenne de deplacement, je dois obliger 
+        # l'utilisateur à passer par le menu Région puis département
 
 # Extraction des personnes respectant le filtre sur l'age
 df_final = df_final_[(df_final_["age"] >= start) & (df_final_["age"] <= end)]
@@ -442,48 +466,48 @@ if restitution_des_valeurs:
         size_col = "nb_deces"
 
         # ****** BarPlot *****
-        df_bar = df_list.groupby(["ville_deces", "origine_ville"], as_index=False).agg(
-            nb_deces=("nb_deces", "sum"),
-        )
+        #df_bar = df_list.groupby(["ville_deces", "origine_ville"], as_index=False).agg(
+        #    nb_deces=("nb_deces", "sum"),
+        #)
 
-        df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
+        #df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
         nom_secteur = "ville_deces"
 
         # ****** BarPlot2 *****
-        df_bar_cl = (
-            df_final.query("ville_deces == @ville_selected")  
-            .groupby(
-                ["ville_deces", "classe_age", "origine_ville"],
-                as_index=False,
-                observed=True,
-            )
-            .agg(
-                nb_deces=("nb_deces", "sum"), 
-            )
-        )
+        #df_bar_cl = (
+        #    df_final.query("ville_deces == @ville_selected")  
+        #    .groupby(
+        #        ["ville_deces", "classe_age", "origine_ville"],
+        #        as_index=False,
+        #        observed=True,
+        #    )
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"), 
+        #    )
+        #)
         origine_secteur = "origine_ville"
 
         # ****** BarPlot3 *****
-        df_bar_month = (
-            df_final.query("ville_deces == @ville_selected")  
-            .groupby(["month_deces", "origine_ville"], as_index=False, observed=True)
-            .agg(
-                nb_deces=("nb_deces", "sum"),  
-            )
-        )
+        #df_bar_month = (
+        #    df_final.query("ville_deces == @ville_selected")  
+        #    .groupby(["month_deces", "origine_ville"], as_index=False, observed=True)
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"),  
+        #    )
+        #)
 
         # ****** BarPlot Test *****
-        df_bar_month_cl = (
-            df_final.query("ville_deces == @ville_selected")
-            .groupby(
-                ["ville_deces", "month_deces", "classe_age", "origine_ville"],
-                as_index=False,
-                observed=True,
-            )
-            .agg(
-                nb_deces=("nb_deces", "sum"),
-            )
-        )
+        #df_bar_month_cl = (
+        #    df_final.query("ville_deces == @ville_selected")
+        #    .groupby(
+        #        ["ville_deces", "month_deces", "classe_age", "origine_ville"],
+        #        as_index=False,
+        #        observed=True,
+        #    )
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"),
+        #    )
+        #)
         # ****** Metrics *******
         df_fnl_m = df_fnl.query("ville_deces == @ville_selected")
 
@@ -502,58 +526,58 @@ if restitution_des_valeurs:
         size_col = "count"
 
         # ****** BarPlot *****
-        df_bar = df_list.groupby(  
-            ["ville_deces", "origine_departement"], as_index=False
-        ).agg(
-            nb_deces=("nb_deces", "sum"),
-            
-        )
+        #df_bar = df_list.groupby(  
+        #    ["ville_deces", "origine_departement"], as_index=False
+        #).agg(
+        #    nb_deces=("nb_deces", "sum"),
+        #    
+        #)
 
-        df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
+        #df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
         nom_secteur = "ville_deces"
 
         # ****** BarPlot2 *****
-        df_bar_cl = (
-            df_final.query("nom_departement_deces == @departement_selected")  
-            .groupby(
-                ["ville_deces", "classe_age", "origine_departement"],
-                as_index=False,
-                observed=True,
-            )
-            .agg(
-                nb_deces=("nb_deces", "sum"), 
-            )
-        )
+        #df_bar_cl = (
+        #    df_final.query("nom_departement_deces == @departement_selected")  
+        #    .groupby(
+        #        ["ville_deces", "classe_age", "origine_departement"],
+        #        as_index=False,
+        #        observed=True,
+        #    )
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"), 
+        #    )
+        #)
         origine_secteur = "origine_departement"
 
         # ****** BarPlot3 *****
-        df_bar_month = (
-            df_final.query("nom_departement_deces == @departement_selected")  
-            .groupby(
-                ["month_deces", "origine_departement"], as_index=False, observed=True
-            )
-            .agg(
-                nb_deces=("nb_deces", "sum"),  
-            )
-        )
+        #df_bar_month = (
+        #    df_final.query("nom_departement_deces == @departement_selected")  
+        #    .groupby(
+        #        ["month_deces", "origine_departement"], as_index=False, observed=True
+        #    )
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"),  
+        #    )
+        #)
 
         # ****** BarPlot Test *****
-        df_bar_month_cl = (
-            df_final.query("nom_departement_deces == @departement_selected")
-            .groupby(
-                [
-                    "nom_departement_deces",
-                    "month_deces",
-                    "classe_age",
-                    "origine_departement",
-                ],
-                as_index=False,
-                observed=True,
-            )
-            .agg(
-                nb_deces=("nb_deces", "sum"),
-            )
-        )
+        #df_bar_month_cl = (
+        #    df_final.query("nom_departement_deces == @departement_selected")
+        #    .groupby(
+        #        [
+        #            "nom_departement_deces",
+        #            "month_deces",
+        #            "classe_age",
+        #            "origine_departement",
+        #        ],
+        #        as_index=False,
+        #        observed=True,
+        #    )
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"),
+        #    )
+        #)
         # ****** Metrics *******
         df_fnl_m = df_fnl.query("nom_departement_deces == @departement_selected")
 
@@ -572,57 +596,57 @@ if restitution_des_valeurs:
         size_col = "count"
 
         # ****** BarPlot *****
-        df_bar = df_list.groupby(
-            ["nom_departement_deces", "origine_departement"], as_index=False
-        ).agg(
-            nb_deces=("nb_deces", "sum"),             
-        )
+        #df_bar = df_list.groupby(
+        #    ["nom_departement_deces", "origine_departement"], as_index=False
+        #).agg(
+        #    nb_deces=("nb_deces", "sum"),             
+        #)
 
-        df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
+        #df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
 
         nom_secteur = "nom_departement_deces"
 
         # ****** BarPlot2 *****
-        df_bar_cl = (
-            df_final.query("nom_region_deces == @region_selected") 
-            .groupby(
-                ["nom_departement_deces", "classe_age", "origine_departement"],
-                as_index=False,
-                observed=True,
-            )
-            .agg(
-                nb_deces=("nb_deces", "sum"),  
-            )
-        )
+        #df_bar_cl = (
+        #    df_final.query("nom_region_deces == @region_selected") 
+        #    .groupby(
+        #        ["nom_departement_deces", "classe_age", "origine_departement"],
+        #        as_index=False,
+        #        observed=True,
+        #    )
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"),  
+        #    )
+        #)
         origine_secteur = "origine_departement"
 
         # ****** BarPlot3 *****
-        df_bar_month = (
-            df_final.query("nom_region_deces == @region_selected") 
-            .groupby(
-                ["month_deces", "origine_departement"], as_index=False, observed=True
-            )
-            .agg(
-                nb_deces=("nb_deces", "sum"),  
-            )
-        )
+        #df_bar_month = (
+        #    df_final.query("nom_region_deces == @region_selected") 
+        #    .groupby(
+        #        ["month_deces", "origine_departement"], as_index=False, observed=True
+        #    )
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"),  
+        #    )
+        #)
         # ****** BarPlot Test *****
-        df_bar_month_cl = (
-            df_final.query("nom_region_deces == @region_selected")
-            .groupby(
-                [
-                    "nom_departement_deces",
-                    "month_deces",
-                    "classe_age",
-                    "origine_departement",
-                ],
-                as_index=False,
-                observed=True,
-            )
-            .agg(
-                nb_deces=("nb_deces", "sum"),
-            )
-        )
+        #df_bar_month_cl = (
+        #    df_final.query("nom_region_deces == @region_selected")
+        #    .groupby(
+        #        [
+        #            "nom_departement_deces",
+        #            "month_deces",
+        #            "classe_age",
+        #            "origine_departement",
+        #        ],
+        #        as_index=False,
+        #        observed=True,
+        #    )
+        #    .agg(
+        #        nb_deces=("nb_deces", "sum"),
+        #    )
+        #)
         # ****** Metrics *******
         df_fnl_m = df_fnl.query("nom_region_deces == @region_selected")
 
@@ -639,56 +663,109 @@ if restitution_des_valeurs:
         size_col = "count"
 
         # ****** BarPlot *****
-        df_bar = df_final.groupby(
-            ["nom_region_deces", "origine_nationale"], as_index=False
-        ).agg(
-            nb_deces=("nb_deces", "sum"),            
-        )
+        #df_bar = df_final.groupby(
+        #    ["nom_region_deces", "origine_nationale"], as_index=False
+        #).agg(
+        #    nb_deces=("nb_deces", "sum"),            
+        #)
 
-        df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
+        #df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
 
         nom_secteur = "nom_region_deces" 
 
         # ****** BarPlot2 *****    
-        df_bar_cl = df_final.groupby(  
-            ["nom_region_deces", "classe_age", "origine_nationale"],
-            as_index=False,
-            observed=True,
-        ).agg(
-            nb_deces=("nb_deces", "sum"),  
-        )
+        #df_bar_cl = df_final.groupby(  
+        #    ["nom_region_deces", "classe_age", "origine_nationale"],
+        #    as_index=False,
+        #    observed=True,
+        #).agg(
+        #    nb_deces=("nb_deces", "sum"),  
+        #)
         origine_secteur = "origine_nationale"  
 
         # ****** BarPlot3 *****
-        df_bar_month = df_final.groupby(  
-            ["month_deces", "origine_nationale"], as_index=False, observed=True
-        ).agg(
-            nb_deces=("nb_deces", "sum"),  
-        )
+        #df_bar_month = df_final.groupby(  
+        #    ["month_deces", "origine_nationale"], as_index=False, observed=True
+        #).agg(
+        #    nb_deces=("nb_deces", "sum"),  
+        #)
 
         # ****** BarPlot Test *****
-        df_bar_month_cl = df_final.groupby(
-            ["nom_region_deces", "month_deces", "classe_age", "origine_region"],
-            as_index=False,
-            observed=True,
-        ).agg(
-            nb_deces=("nb_deces", "sum"),
-        )
+        #df_bar_month_cl = df_final.groupby(
+        #    ["nom_region_deces", "month_deces", "classe_age", "origine_region"],
+        #    as_index=False,
+        #    observed=True,
+        #).agg(
+        #    nb_deces=("nb_deces", "sum"),
+        #)
 
         # ****** Metrics *******
         df_fnl_m = df_fnl
+    
     # -------------------------------------------------------------------------------------
-
+    # STREAMLIT  SESSION
     # --- Gestion changement de filtres ---
     current_filters = (region_selected, departement_selected, ville_selected, start, end)
 
     if "filters" not in st.session_state:
         st.session_state.filters = current_filters
+        if origine_secteur == "origine_nationale":# nous sommes sur une posture nationale pour laquelle
+            # nous calculons l'ecart-type et la moyenne de la distance (cas de relance de l'application)
+            le_df_ecart_type_moy,le_df_ecart_type_moy_age = moyenne_ecart_type_national(df_fnl_m)
+            st.session_state.ecart_type_national=le_df_ecart_type_moy['std_distance']
+            st.session_state.moyenne_nationale = le_df_ecart_type_moy['moy_distance']
+            st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
 
     if current_filters != st.session_state.filters:
         st.session_state.filters = current_filters
         st.session_state.page = 0  # reset pagination
-    
+        if origine_secteur == "origine_nationale": # nous sommes sur une posture nationale pour laquelle
+            # nous calculons l'ecart-type et la moyenne de la distance (cas de modification filtes)
+            le_df_ecart_type_moy,le_df_ecart_type_moy_age = moyenne_ecart_type_national(df_fnl_m)
+            st.session_state.ecart_type_national=le_df_ecart_type_moy['std_distance']
+            st.session_state.moyenne_nationale = le_df_ecart_type_moy['moy_distance']
+            st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
+
+    # -------------------------------------------------------------------------------------   
+    # PAGINATION        
+    ce_graph_TAFV = graph_score(df_fnl,nom_secteur,origine_secteur)
+    # je fais apparaitre uniquement dans une vue nat, region ou departement
+    if origine_secteur !='origine_ville':    
+        #with st.container(border=False,
+        #            horizontal_alignment="center", 
+        #vertical_alignment="center",
+        #            height = 720): 
+        #with st.container(border=False,horizontal_alignment="center",
+        #        vertical_alignment="center", width = "content"):
+        
+        # Boutons de navigation
+        with st.sidebar.container(border=False,
+                                  height = 50,):
+            col1, col2, col3 = st.columns([0.5, 0.42, 0.5])
+            with col1:
+                be_disabled = True if st.session_state.page == ce_graph_TAFV.nombre_de_page-1 else False
+                if st.button("⬅️",
+                                    disabled=be_disabled,
+                                    use_container_width=True,
+                                    help ="Secteurs à mortalité faible") and not be_disabled:
+                    st.session_state.page += 1
+            
+            with col2:
+                st.info(f"{st.session_state.page + 1} / {ce_graph_TAFV.nombre_de_page}")
+
+            with col3:  
+                be_disabled = True if st.session_state.page == 0 else False
+                if st.button("➡️",
+                                    disabled=be_disabled,
+                                    use_container_width=True,
+                                    help ="Secteurs à mortalité forte") : # type: ignore
+                    st.session_state.page -= 1  
+                                
+        st.session_state.page = max(0, st.session_state.page)
+        st.session_state.page = min(st.session_state.page, ce_graph_TAFV.nombre_de_page)
+
+    # faire un petit espace pour eviter d'interargir avec la map et les boutons
+    st.sidebar.space(size="xxsmall")
     # -------------------------------------------------------------------------------------
 
     # -----------------------------
@@ -828,11 +905,11 @@ if restitution_des_valeurs:
                 unsafe_allow_html=True,
             ) 
              
-            ce_graph_TAFV = graph_score(df_fnl,nom_secteur,origine_secteur)
+            #ce_graph_TAFV = graph_score(df_fnl,nom_secteur,origine_secteur)
             fig_score, message_score,df_score = ce_graph_TAFV.render_graph_score(
                 page=st.session_state.page
             )
-            ce_graph_TAFV_age = graph_age_TAFV(df_fnl,nom_secteur,origine_secteur) 
+            ce_graph_TAFV_age = graph_score_age(df_fnl,nom_secteur,origine_secteur) 
             fig_score_age = ce_graph_TAFV_age.render_graph_score_age(
                 page=st.session_state.page) 
             
@@ -890,26 +967,8 @@ if restitution_des_valeurs:
                         with tab11:                                 
                             st.plotly_chart(fig_score, width="stretch", key="Graphe_score")             
 
-                with col_separateur:
-                    # je fais apparaitre unqiement dans une vue nat, region ou departement
-                    if origine_secteur !='origine_ville':    
-                        with st.container(border=False,horizontal_alignment="center", 
-                            vertical_alignment="center",height = 720): 
-                            with st.container(border=False,horizontal_alignment="center",
-                                    vertical_alignment="center", width = "content"):
-                                st.info(f"{st.session_state.page + 1} / {ce_graph_TAFV.nombre_de_page}")
-                                
-                            be_disabled = True if st.session_state.page == 0 else False
-                            if st.button("⬆️",disabled=be_disabled,help ="Secteurs à mortalité forte") :
-                                st.session_state.page -= 1
-                                
-                            be_disabled = True if st.session_state.page == ce_graph_TAFV.nombre_de_page-1 else False
-                            if st.button("⬇️",disabled=be_disabled,help ="Secteurs à mortalité faible") and not be_disabled:
-                                st.session_state.page += 1
-                                
-                        st.session_state.page = max(0, st.session_state.page)
-                        st.session_state.page = min(st.session_state.page, ce_graph_TAFV.nombre_de_page)
-
+                #with col_separateur:
+                    
                 with col_age_TAFV:
                     
                     with st.container(border=True):                        
@@ -965,6 +1024,61 @@ if restitution_des_valeurs:
                 # message de suppression d'éventuel secteur sans intéret
                 st.text(message_score) 
 
-            
+        with st.container(border=True):
+            st.subheader("Indice de mobilité différentielle")
+            col_ind_imd, _ = st.columns([0.4, 0.6]) # 0.6 car il n'accepte pas un cumul décimal (padding)
+            col_ind_imd.metric("IMD", ind_atfv) #
+
+            st.markdown(
+                """
+                <div style="background-color: #ADD8E6; ">
+                📌 L’indice de mobilité différentielle permet de répondre à cette question :\n
+                Ce territoire est-il plus ou moins mobile que la moyenne nationale ?<br>
+                <b>-</b> IMD < 0 le secteur a une faible stabilité territoriale.
+                Cela peut refléter des territoires d'ancrage.<br>
+                <b>-</b> IMD > 0 le secteur a une mobilité élévée.
+                Cela correspond à des territoires de circulation.
+                </div>                
+                """,
+                unsafe_allow_html=True,
+            ) 
+            with st.container(border=True): 
+                col_IMD, col_separateur, col_age_IMD = st.columns([5.4,0.1,4.6])
+                
+                ce_graph_IMD = graph_score(df_fnl,nom_secteur,origine_secteur,
+                                        st.session_state.ecart_type_national.loc[0],
+                                        st.session_state.moyenne_nationale.loc[0]  ,                                   
+                                        )
+                
+                fig_score_IMD, message_score_,df_score_IMD = ce_graph_IMD.render_graph_score_IMD(
+                                                                page=st.session_state.page,
+                                                                ) 
+                ce_graph_IMD_age = graph_score_age(df_fnl,
+                                                    nom_secteur,
+                                                    origine_secteur,
+                                                    st.session_state.df_ecart_type_moy_age,
+                                                    ) 
+                fig_score_age_IMD = ce_graph_IMD_age.render_graph_score_age_IMD(
+                        page=st.session_state.page) 
+                    
+                fig_score_IMD_age_Exo = ce_graph_IMD_age.render_graph_score_age_IMD(
+                        False,
+                        page=st.session_state.page,indicateur="mobilite_secteur")
+                
+                with col_IMD:
+                        with st.container(border=True): 
+                            st.plotly_chart(fig_score_IMD, 
+                                                    width="stretch", 
+                                                    key="Graphe_IMD",
+                                                    ) 
+
+                with col_age_IMD:
+                        with st.container(border=True): 
+                            st.plotly_chart(fig_score_IMD_age_Exo, 
+                                                            width="stretch", 
+                                                            key="Graphe_age_IMD",
+                                                        )
+    
+        
 
     

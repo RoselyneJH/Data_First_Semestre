@@ -13,7 +13,12 @@ PAGE_SIZE = 20 # nombre de secteur affiché dans le graphe
 
 class ClsScorePourViz:    
 
-    def __init__(self, df:pd.DataFrame, ce_ss_secteur:str, cette_origine:str):
+    def __init__(self, df:pd.DataFrame, ce_ss_secteur:str, 
+                 cette_origine:str,
+                 distance_ecart_type_national:float = 1.0,
+                 distance_moyenne_nationale:float = 0.0,
+                 le_df_ecart_type_moy_age:pd.DataFrame = None,
+                 ):
         """
         Initialise un filtre des personnes decedées pour restitution des scores
 
@@ -21,6 +26,7 @@ class ClsScorePourViz:
             df            : dataframe
             ce_ss_secteur : le sous secteur
             cette_origine : origine des deces
+            ecart-type et moyenne nationaux pour les distances
         
         """
         self.df = df
@@ -36,13 +42,20 @@ class ClsScorePourViz:
         # une liste de dataframe
         self.liste_df_cumul_secteur=[]
         # nombre de pages
-        self.pages = 0           
+        self.pages = 0  
+
+        # ecart type national pour la distance   
+        self.distance_ecart_type_national = distance_ecart_type_national
+        # moyenne nationale pour la distance  
+        self.distance_moyenne_nationale = distance_moyenne_nationale  
+        # le dataframe reprenant les moyennes et ecart-type par classe d'age pour le national :
+        self.le_df_ecart_type_moy_age = le_df_ecart_type_moy_age
 
     def score_secteur(self, filtrer_age:bool = False)-> Tuple[pd.DataFrame, str, str, str, str] :
         '''
-            Args    : Dataframe à transformer
-                    sous_secteur à filtrer
-                    origine du sous secteur
+            Args    :
+                    filtrer_age boolean si oui ajout de la classe d'age
+                    
             Return  : Dataframe transformé
             Process : Comptabilité liée par sous-secteurs sur deces exogènes,
                     deces originaires, distance selon age
@@ -104,16 +117,22 @@ class ClsScorePourViz:
                 (pl.col("distance").filter(pl.col(cette_origine) == "N"))
                 .median().alias("med_distance_non_ori"),
                 (pl.col("distance").filter(pl.col(cette_origine) == "O"))
-                .median().alias("med_distance_ori"), 
-            ])
+                .median().alias("med_distance_ori"),
+                ((pl.col("distance") + 1).log()).sum().alias("log_distance_secteur"),  # somme des distances             
+            ])    
             
             # Taux d'attractivité de fin de vie TAFV
             .with_columns([
                 (pl.col("item_nb_origine")/
                 (pl.col("item_nb_origine")+pl.col("item_nb_non_origine") )
-                ).round(3).alias("TAFV") # Taux d'attractivité de fin de vie
+                ).round(3).alias("TAFV"), # Taux d'attractivité de fin de vie                
             ])
-            
+            .with_columns([
+                ((pl.col("log_distance_secteur"))/pl.col("deces")).round(3).alias("mobilite_secteur"), # mobilité du secteur mondérée.               
+            ])
+            .with_columns([
+                ((self.distance_moyenne_nationale-pl.col("mobilite_secteur"))/self.distance_ecart_type_national).round(3).alias("IMD"), # indice de mobilité diffe.               
+            ])            
             .collect()
             )  
         # En ajoutant la clonne age à ntre dataframe, on perd l'ordre des secteurs,
@@ -123,16 +142,13 @@ class ClsScorePourViz:
             .filter(pl.col("pays_naissance").is_in(["FRANCE"] )) 
             .group_by(la_liste_sans_filtre_age)
             .agg(
-                #(pl.col(cette_origine) == "N").sum().alias("item_nb_non_origine")
-                (pl.col("idligne").count().alias("deces"))
+                (pl.col("idligne").count().alias("deces")),
                 ) #,
 
             .with_columns(
-                #pl.col("item_nb_non_origine")
                 pl.col("deces")
                 .rank(descending=True)
-                #.over(la_liste_sans_filtre_age)
-                .alias("rang_deces").cast(pl.Int64)
+                .alias("rang_deces").cast(pl.Int64),
             )
             .collect()
         )
@@ -163,7 +179,7 @@ class ClsScorePourViz:
         page_max = df_cumul_secteur_["rang_deces"].max()//PAGE_SIZE + reste
         
         # Mais je dois plafonner le nmbre de pages car j'ai des pbs de performance à 3 oiu moins selon cas
-        self.pages = page_max if page_max <= 4 else 4
+        self.pages = page_max if page_max <= 3 else 3
         
         # Chargement de la liste des dataframes  pour simuler les differentes pages      
         p=1
