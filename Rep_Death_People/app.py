@@ -153,7 +153,11 @@ def moyenne_ecart_type_national(df_fnl: pd.DataFrame)-> Tuple:
             .filter(pl.col("pays_naissance").is_in(["FRANCE"] ))
             .select([
                 ((pl.col("distance") + 1).log()).mean().alias("moy_distance"),  # mobilité moyenne
-                ((pl.col("distance") + 1).log()).std().alias("std_distance"),]) # ecart type de la mobilité              
+                ((pl.col("distance") + 1).log()).std().alias("std_distance"),
+                  pl.col("distance").filter(pl.col("origine_departement") == "O").min().alias("distance_dep_min"),
+                  pl.col("distance").filter(pl.col("origine_departement") == "O").max().alias("distance_dep_max"),
+                  pl.col("distance").filter(pl.col("origine_nationale") == "O").max().alias("distance_nat_max"),
+                  ])               
             .collect())
     
     df_polars_age = (mon_pl.lazy()
@@ -163,11 +167,11 @@ def moyenne_ecart_type_national(df_fnl: pd.DataFrame)-> Tuple:
                 ((pl.col("distance") + 1).log()).mean().alias("moy_distance"),  # mobilité moyenne
                 ((pl.col("distance") + 1).log()).std().alias("std_distance"),]) # ecart type de la mobilité              
             .collect())
-        
+       
     df = df_polars.to_pandas()
     df_age = df_polars_age.to_pandas()
     
-    return df,df_age#['std_distance'],df['moy_distance']
+    return df,df_age
     
 def recherche_dominant_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
                                    cette_origine_secteur:str)-> Tuple:
@@ -210,7 +214,7 @@ def recherche_dominant_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
     
     return age_moyen, serie_sex, serie_prenom, serie_lieu_naissance, serie_lieu_deces, origine_dominante, distance_moy
 
-def statistique_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
+def statistique_sur_secteur(df_fnl_e: pd.DataFrame, ce_secteur:str,
                                    cette_origine_secteur:str)-> Tuple:
     """
     Produits des Kpis sur ce secteur
@@ -224,6 +228,8 @@ def statistique_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
     """
     # Dictionnaire 
     stat_secteur = { }
+
+    df_fnl_m = df_fnl_e.copy()
 
     # Preparation des indicateurs
     nb_originaire = df_fnl_m[df_fnl_m[cette_origine_secteur] =='O'][cette_origine_secteur].count()
@@ -261,7 +267,11 @@ def statistique_sur_secteur(df_fnl_m: pd.DataFrame, ce_secteur:str,
     stat_secteur['distance_med_originaire'] = distance_med_originaire 
     stat_secteur['distance_med_exogene'] = distance_med_exogene 
     
-    return pct_originaire, pct_exogene, ind_TAFV, age_moy_originaire, age_moy_exogene, distance_med_originaire, distance_med_exogene
+    df_fnl_m['distance_av_som'] = 1+df_fnl_m['distance']    
+    df_fnl_m.loc[:, 'distance_lng'] = np.log(df_fnl_m['distance_av_som'])
+    distance_log_sum_prp = df_fnl_m['distance_lng'].sum()/len(df_fnl_m)
+     
+    return pct_originaire, pct_exogene, ind_TAFV, distance_log_sum_prp, age_moy_originaire, age_moy_exogene, distance_med_originaire, distance_med_exogene
 
 # Récupération des regions et départements
 geojson_regions, geojson_departements = load_geojsons()
@@ -465,50 +475,10 @@ if restitution_des_valeurs:
         hover_col = "ville_deces"
         size_col = "nb_deces"
 
-        # ****** BarPlot *****
-        #df_bar = df_list.groupby(["ville_deces", "origine_ville"], as_index=False).agg(
-        #    nb_deces=("nb_deces", "sum"),
-        #)
-
-        #df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
         nom_secteur = "ville_deces"
 
-        # ****** BarPlot2 *****
-        #df_bar_cl = (
-        #    df_final.query("ville_deces == @ville_selected")  
-        #    .groupby(
-        #        ["ville_deces", "classe_age", "origine_ville"],
-        #        as_index=False,
-        #        observed=True,
-        #    )
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"), 
-        #    )
-        #)
         origine_secteur = "origine_ville"
 
-        # ****** BarPlot3 *****
-        #df_bar_month = (
-        #    df_final.query("ville_deces == @ville_selected")  
-        #    .groupby(["month_deces", "origine_ville"], as_index=False, observed=True)
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"),  
-        #    )
-        #)
-
-        # ****** BarPlot Test *****
-        #df_bar_month_cl = (
-        #    df_final.query("ville_deces == @ville_selected")
-        #    .groupby(
-        #        ["ville_deces", "month_deces", "classe_age", "origine_ville"],
-        #        as_index=False,
-        #        observed=True,
-        #    )
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"),
-        #    )
-        #)
-        # ****** Metrics *******
         df_fnl_m = df_fnl.query("ville_deces == @ville_selected")
 
     elif departement_selected != "Tous les départements":
@@ -525,60 +495,10 @@ if restitution_des_valeurs:
         hover_col = "ville_deces"
         size_col = "count"
 
-        # ****** BarPlot *****
-        #df_bar = df_list.groupby(  
-        #    ["ville_deces", "origine_departement"], as_index=False
-        #).agg(
-        #    nb_deces=("nb_deces", "sum"),
-        #    
-        #)
-
-        #df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
         nom_secteur = "ville_deces"
 
-        # ****** BarPlot2 *****
-        #df_bar_cl = (
-        #    df_final.query("nom_departement_deces == @departement_selected")  
-        #    .groupby(
-        #        ["ville_deces", "classe_age", "origine_departement"],
-        #        as_index=False,
-        #        observed=True,
-        #    )
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"), 
-        #    )
-        #)
         origine_secteur = "origine_departement"
 
-        # ****** BarPlot3 *****
-        #df_bar_month = (
-        #    df_final.query("nom_departement_deces == @departement_selected")  
-        #    .groupby(
-        #        ["month_deces", "origine_departement"], as_index=False, observed=True
-        #    )
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"),  
-        #    )
-        #)
-
-        # ****** BarPlot Test *****
-        #df_bar_month_cl = (
-        #    df_final.query("nom_departement_deces == @departement_selected")
-        #    .groupby(
-        #        [
-        #            "nom_departement_deces",
-        #            "month_deces",
-        #            "classe_age",
-        #            "origine_departement",
-        #        ],
-        #        as_index=False,
-        #        observed=True,
-        #    )
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"),
-        #    )
-        #)
-        # ****** Metrics *******
         df_fnl_m = df_fnl.query("nom_departement_deces == @departement_selected")
 
     elif region_selected != "Toutes les régions":
@@ -595,59 +515,10 @@ if restitution_des_valeurs:
         hover_col = "nom_departement_deces"
         size_col = "count"
 
-        # ****** BarPlot *****
-        #df_bar = df_list.groupby(
-        #    ["nom_departement_deces", "origine_departement"], as_index=False
-        #).agg(
-        #    nb_deces=("nb_deces", "sum"),             
-        #)
-
-        #df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
-
         nom_secteur = "nom_departement_deces"
 
-        # ****** BarPlot2 *****
-        #df_bar_cl = (
-        #    df_final.query("nom_region_deces == @region_selected") 
-        #    .groupby(
-        #        ["nom_departement_deces", "classe_age", "origine_departement"],
-        #        as_index=False,
-        #        observed=True,
-        #    )
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"),  
-        #    )
-        #)
         origine_secteur = "origine_departement"
 
-        # ****** BarPlot3 *****
-        #df_bar_month = (
-        #    df_final.query("nom_region_deces == @region_selected") 
-        #    .groupby(
-        #        ["month_deces", "origine_departement"], as_index=False, observed=True
-        #    )
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"),  
-        #    )
-        #)
-        # ****** BarPlot Test *****
-        #df_bar_month_cl = (
-        #    df_final.query("nom_region_deces == @region_selected")
-        #    .groupby(
-        #        [
-        #            "nom_departement_deces",
-        #            "month_deces",
-        #            "classe_age",
-        #            "origine_departement",
-        #        ],
-        #        as_index=False,
-        #        observed=True,
-        #    )
-        #    .agg(
-        #        nb_deces=("nb_deces", "sum"),
-        #    )
-        #)
-        # ****** Metrics *******
         df_fnl_m = df_fnl.query("nom_region_deces == @region_selected")
 
     else:
@@ -662,42 +533,9 @@ if restitution_des_valeurs:
         hover_col = "nom_region_deces"
         size_col = "count"
 
-        # ****** BarPlot *****
-        #df_bar = df_final.groupby(
-        #    ["nom_region_deces", "origine_nationale"], as_index=False
-        #).agg(
-        #    nb_deces=("nb_deces", "sum"),            
-        #)
-
-        #df_bar = df_bar.sort_values("nb_deces", ascending=ordre_tri).head(nb_energ)
-
         nom_secteur = "nom_region_deces" 
 
-        # ****** BarPlot2 *****    
-        #df_bar_cl = df_final.groupby(  
-        #    ["nom_region_deces", "classe_age", "origine_nationale"],
-        #    as_index=False,
-        #    observed=True,
-        #).agg(
-        #    nb_deces=("nb_deces", "sum"),  
-        #)
         origine_secteur = "origine_nationale"  
-
-        # ****** BarPlot3 *****
-        #df_bar_month = df_final.groupby(  
-        #    ["month_deces", "origine_nationale"], as_index=False, observed=True
-        #).agg(
-        #    nb_deces=("nb_deces", "sum"),  
-        #)
-
-        # ****** BarPlot Test *****
-        #df_bar_month_cl = df_final.groupby(
-        #    ["nom_region_deces", "month_deces", "classe_age", "origine_region"],
-        #    as_index=False,
-        #    observed=True,
-        #).agg(
-        #    nb_deces=("nb_deces", "sum"),
-        #)
 
         # ****** Metrics *******
         df_fnl_m = df_fnl
@@ -714,6 +552,8 @@ if restitution_des_valeurs:
             le_df_ecart_type_moy,le_df_ecart_type_moy_age = moyenne_ecart_type_national(df_fnl_m)
             st.session_state.ecart_type_national=le_df_ecart_type_moy['std_distance']
             st.session_state.moyenne_nationale = le_df_ecart_type_moy['moy_distance']
+            st.session_state.distance_departement_min=le_df_ecart_type_moy['distance_dep_min']
+            st.session_state.distance_departement_max = le_df_ecart_type_moy['distance_dep_max']
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
 
     if current_filters != st.session_state.filters:
@@ -724,6 +564,8 @@ if restitution_des_valeurs:
             le_df_ecart_type_moy,le_df_ecart_type_moy_age = moyenne_ecart_type_national(df_fnl_m)
             st.session_state.ecart_type_national=le_df_ecart_type_moy['std_distance']
             st.session_state.moyenne_nationale = le_df_ecart_type_moy['moy_distance']
+            st.session_state.distance_departement_min=le_df_ecart_type_moy['distance_dep_min']
+            st.session_state.distance_departement_max = le_df_ecart_type_moy['distance_dep_max']
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
 
     # -------------------------------------------------------------------------------------   
@@ -731,17 +573,11 @@ if restitution_des_valeurs:
     ce_graph_TAFV = graph_score(df_fnl,nom_secteur,origine_secteur)
     # je fais apparaitre uniquement dans une vue nat, region ou departement
     if origine_secteur !='origine_ville':    
-        #with st.container(border=False,
-        #            horizontal_alignment="center", 
-        #vertical_alignment="center",
-        #            height = 720): 
-        #with st.container(border=False,horizontal_alignment="center",
-        #        vertical_alignment="center", width = "content"):
-        
+       
         # Boutons de navigation
         with st.sidebar.container(border=False,
                                   height = 50,):
-            col1, col2, col3 = st.columns([0.5, 0.42, 0.5])
+            col1, col12,col3,col13, col4 = st.columns([0.35, 0.1,0.42,0.1, 0.35]) #0.42
             with col1:
                 be_disabled = True if st.session_state.page == ce_graph_TAFV.nombre_de_page-1 else False
                 if st.button("⬅️",
@@ -750,10 +586,10 @@ if restitution_des_valeurs:
                                     help ="Secteurs à mortalité faible") and not be_disabled:
                     st.session_state.page += 1
             
-            with col2:
+            with col3:
                 st.info(f"{st.session_state.page + 1} / {ce_graph_TAFV.nombre_de_page}")
 
-            with col3:  
+            with col4:  
                 be_disabled = True if st.session_state.page == 0 else False
                 if st.button("➡️",
                                     disabled=be_disabled,
@@ -871,7 +707,7 @@ if restitution_des_valeurs:
 
             st.subheader(sous_titre_indicateur_secteur)
 
-            pc_o, pc_e, ind_atfv, moy_age_o, moy_age_e,dis_med_o,dis_med_e = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
+            pc_o, pc_e, ind_atfv, distance_lng_sum_prc ,moy_age_o, moy_age_e,dis_med_o,dis_med_e = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
             col_pc_originaire, col_pc_exogene, col_moy_age_ori, col_moy_age_exo, col_dist_med_o,col_dist_med_e = st.columns([0.8, 0.8, 0.9, 0.9,0.9,0.9])
 
@@ -883,45 +719,115 @@ if restitution_des_valeurs:
             col_dist_med_o.metric("Distance med.* Originaire", dis_med_o)
             col_dist_med_e.metric("Distance med.* Exogène", dis_med_e)
 
+            # calcul d'IMD 
+            ind_imd = round((distance_lng_sum_prc-st.session_state.moyenne_nationale.loc[0])/st.session_state.ecart_type_national.loc[0],2)
+            # 
             st.caption("Distance med.* = Distance médiane ")
-           
+        
+        # RESTITUTION DES GRAPHES
+        fig_score, message_score,df_score = ce_graph_TAFV.render_graph_score(
+            page=st.session_state.page
+        )
+        ce_graph_TAFV_age = graph_score_age(df_fnl,nom_secteur,origine_secteur) 
+        fig_score_age = ce_graph_TAFV_age.render_graph_score_age(
+            page=st.session_state.page) 
+        
+        fig_score_age_Exo = ce_graph_TAFV_age.render_graph_score_age(
+            False,
+            page=st.session_state.page) 
+        
+        ce_graph_IMD = graph_score(df_fnl,nom_secteur,origine_secteur,
+                st.session_state.ecart_type_national.loc[0],
+                st.session_state.moyenne_nationale.loc[0]  ,                                   
+                )
+        
+        fig_score_IMD, message_score_,df_score_IMD = ce_graph_IMD.render_graph_score_IMD(
+                page=st.session_state.page,
+                ) 
+        ce_graph_IMD_age = graph_score_age(df_fnl,
+                nom_secteur,
+                origine_secteur,
+                st.session_state.df_ecart_type_moy_age,
+                ) 
+        
+        #fig_score_age_IMD = ce_graph_IMD_age.render_graph_score_age_IMD(
+        #        page=st.session_state.page) 
+            
+        fig_score_IMD_age_Exo = ce_graph_IMD_age.render_graph_score_age_IMD(
+                False,
+                page=st.session_state.page,indicateur="mobilite_secteur")
+        
+        # fin 
 
         with st.container(border=True):
-            st.subheader("Taux d'attractivité de fin de vie")
-            col_ind_tafv, _ = st.columns([0.4, 0.6]) # 0.6 car il n'accepte pas un cumul décimal (padding)
-            col_ind_tafv.metric("TAFV", ind_atfv) # , | TAFV * = Taux d'attractivité de fin de vie [0:1]
+            col_score_1, col_x, col_score_2 = st.columns([4.9,0.6,4.7])
+            with col_score_1:
+                with st.container(border=True):
+                    st.subheader("Taux d'attractivité de fin de vie")
+                    col_ind_tafv, _ = st.columns([0.5, 0.5]) # 0.6 car il n'accepte pas un cumul décimal (padding)
+                    col_ind_tafv.metric("TAFV", ind_atfv) # , | TAFV * = Taux d'attractivité de fin de vie [0:1]
+                    st.markdown(
+                        """
+                        <div style="background-color: #ADD8E6; ">
+                        📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir,
+                         au moment du décès, des personnes qui n'y sont pas nées. \n 
+                        <b></b>\n
+                          
+                        """,
+                        unsafe_allow_html=True,
+                    ) 
+                    with st.popover("ℹ️ Interprétation "):
+                        st.markdown(
+                            """
+                            <div style="background-color: #ADD8E6;
+                                padding:12px;
+                                border-radius:8px;
+                                border-left:4px solid #1f77b4; ">
+                                <b>-</b> TAFV < 0.3 le secteur est très attractif en fin de vie pour les exogènes. Cela peut 
+                                refléter la présence d'hôpitaux, d'EHPAD ou de zones de retraite résidentielle.<br>
+                                <b>-</b> TAFV > 0.6 les décès sont majoritairement locaux (fort ancrage territorial).
+                                Cela correspond à une faible mobilité residentielle soulignant une forte identité culturelle.<br>
+                            </div>              
+                            """,
+                            unsafe_allow_html=True,
+                        )
+            with col_score_2:
+                with st.container(border=True):
+                    st.subheader("Indice de mobilité différentielle")
+                    col_ind_imd, _ = st.columns([0.4, 0.6]) # 
+                    col_ind_imd.metric("IMD", ind_imd) #
+                    st.markdown(
+                        """
+                        <div style="background-color: #ADD8E6; ">
+                        📌 L’indice de mobilité différentielle permet de répondre à cette question :\n
+                        Ce territoire est-il plus ou moins mobile que la moyenne nationale ?\n                        
+                        </div>                
+                        """,
+                        unsafe_allow_html=True,
+                    ) 
+                    with st.popover("ℹ️ Interprétation "):
+                        st.markdown(
+                        """
+                        <div style="background-color: #ADD8E6;
+                            padding:12px;
+                            border-radius:8px;
+                            border-left:4px solid #1f77b4; ">
+                            <b>-</b> IMD < 0 le secteur a une mobilité plus importante que la moyenne nationale.
+                            Cela correspond à des territoires de circulation.<br>
+                            <b>-</b> IMD = 0 Le secteur a une mobilité identique à celle du pays. <br>
+                            <b>-</b> IMD > 0 le secteur a une mobilité plus faible que la moyenne nationale.
+                            Cela peut refléter des territoires d'ancrage. <br>
+                        </div>                
+                        """,
+                        unsafe_allow_html=True,
+                    ) 
 
-            st.markdown(
-                """
-                <div style="background-color: #ADD8E6; ">
-                📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir, 
-                au moment du décès, des personnes qui n'y sont pas nées :\n
-                <b>-</b> TAFV < 0.3 le secteur est très attractif en fin de vie pour les exogènes.
-                Cela peut refléter la présence d'hôpitaux, d'EHPAD ou de zones de retraite résidentielle.<br>
-                <b>-</b> TAFV > 0.6 les décès sont majoritairement locaux (fort ancrage territorial).
-                Cela correspond à une faible mobilité residentielle soulignant une forte identité culturelle.\n 
-                </div>                
-                """,
-                unsafe_allow_html=True,
-            ) 
-             
-            #ce_graph_TAFV = graph_score(df_fnl,nom_secteur,origine_secteur)
-            fig_score, message_score,df_score = ce_graph_TAFV.render_graph_score(
-                page=st.session_state.page
-            )
-            ce_graph_TAFV_age = graph_score_age(df_fnl,nom_secteur,origine_secteur) 
-            fig_score_age = ce_graph_TAFV_age.render_graph_score_age(
-                page=st.session_state.page) 
-            
-            fig_score_age_Exo = ce_graph_TAFV_age.render_graph_score_age(
-                False,
-                page=st.session_state.page)                   
 
             with st.container(border=True):
                 # Préparation de l'alignement des graphes
                 # Colonnes côte à côte
                 # Mettre un espace entre les différents conteneurs
-                col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9,0.7,4.6])
+                col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9,0.6,4.7])
                 with col_TAFV:
                     
                     with st.container(border=True): 
@@ -966,11 +872,8 @@ if restitution_des_valeurs:
 
                         with tab11:                                 
                             st.plotly_chart(fig_score, width="stretch", key="Graphe_score")             
-
-                #with col_separateur:
                     
                 with col_age_TAFV:
-                    
                     with st.container(border=True):                        
                         # Ouvre un pop-up
                         with st.popover("ℹ️ À propos de ces graphiques"):
@@ -1023,47 +926,11 @@ if restitution_des_valeurs:
                 
                 # message de suppression d'éventuel secteur sans intéret
                 st.text(message_score) 
+                     
 
-        with st.container(border=True):
-            st.subheader("Indice de mobilité différentielle")
-            col_ind_imd, _ = st.columns([0.4, 0.6]) # 0.6 car il n'accepte pas un cumul décimal (padding)
-            col_ind_imd.metric("IMD", ind_atfv) #
-
-            st.markdown(
-                """
-                <div style="background-color: #ADD8E6; ">
-                📌 L’indice de mobilité différentielle permet de répondre à cette question :\n
-                Ce territoire est-il plus ou moins mobile que la moyenne nationale ?<br>
-                <b>-</b> IMD < 0 le secteur a une faible stabilité territoriale.
-                Cela peut refléter des territoires d'ancrage.<br>
-                <b>-</b> IMD > 0 le secteur a une mobilité élévée.
-                Cela correspond à des territoires de circulation.
-                </div>                
-                """,
-                unsafe_allow_html=True,
-            ) 
             with st.container(border=True): 
-                col_IMD, col_separateur, col_age_IMD = st.columns([5.4,0.1,4.6])
-                
-                ce_graph_IMD = graph_score(df_fnl,nom_secteur,origine_secteur,
-                                        st.session_state.ecart_type_national.loc[0],
-                                        st.session_state.moyenne_nationale.loc[0]  ,                                   
-                                        )
-                
-                fig_score_IMD, message_score_,df_score_IMD = ce_graph_IMD.render_graph_score_IMD(
-                                                                page=st.session_state.page,
-                                                                ) 
-                ce_graph_IMD_age = graph_score_age(df_fnl,
-                                                    nom_secteur,
-                                                    origine_secteur,
-                                                    st.session_state.df_ecart_type_moy_age,
-                                                    ) 
-                fig_score_age_IMD = ce_graph_IMD_age.render_graph_score_age_IMD(
-                        page=st.session_state.page) 
-                    
-                fig_score_IMD_age_Exo = ce_graph_IMD_age.render_graph_score_age_IMD(
-                        False,
-                        page=st.session_state.page,indicateur="mobilite_secteur")
+                #col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9,0.7,4.6])
+                col_IMD, col_separateur, col_age_IMD = st.columns([4.9,0.6,4.7]) #st.columns([5.4,0.1,4.6])
                 
                 with col_IMD:
                         with st.container(border=True): 
@@ -1071,7 +938,7 @@ if restitution_des_valeurs:
                                                     width="stretch", 
                                                     key="Graphe_IMD",
                                                     ) 
-
+        
                 with col_age_IMD:
                         with st.container(border=True): 
                             st.plotly_chart(fig_score_IMD_age_Exo, 

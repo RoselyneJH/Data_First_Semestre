@@ -6,17 +6,21 @@ from typing import Tuple
 
 CST_TITRE_ORIGINAIRE = "Ancrage territorial et classes d’âge"
 CST_TITRE_EXOGENE = "Attractivité territoriale et classes d’âge"
+#CST_TITRE_EXOGENE = "Attractivité territoriale et classes d’âge"
 
 # Acceder à la classe de filtrage des données
 from my_module.graphs.Cls_graphe_score_pour_viz  import ClsScorePourViz
 
-class ClsGraphScoreAge:
+class   ClsGraphScoreAge:
 
 
     def __init__(self, df_fnl: pd.DataFrame, 
                  nom_secteur:str, 
                  origine_secteur:str,                 
                  le_df_ecart_type_moy_age:pd.DataFrame = None,
+                 distance_dep_inf:float=2.0,
+                 distance_dep_sup:float=30.0,
+                 distance_nat_sup:float=17235.0,
                  ):
             
         """
@@ -33,6 +37,11 @@ class ClsGraphScoreAge:
         self.nom_secteur = nom_secteur
         self.origine_secteur = origine_secteur
         self.le_df_ecart_type_moy_age = le_df_ecart_type_moy_age
+
+        self.distance_nat_inf = 0
+        self.distance_dep_inf = distance_dep_inf # 200
+        self.distance_dep_sup= distance_dep_sup # 600
+        self.distance_nat_sup = distance_nat_sup #2000
 
         self.class_filtrage = ClsScorePourViz(self.df_fnl, 
                                             self.nom_secteur,
@@ -237,7 +246,7 @@ class ClsGraphScoreAge:
             df_top.loc[df_top['origine']=='Autres','top_dep']='N'
 
             # creation du dataframe master sur lequel on effectue le graphe
-            df_master = self.df_fnl[self.df_fnl['ville_deces']==la_ville]
+            df_cette_ville = self.df_fnl[self.df_fnl['ville_deces']==la_ville]
 
             if not secteurs_originaires:            
                 # tri des departements
@@ -251,7 +260,7 @@ class ClsGraphScoreAge:
                 secteur_naissance = 'ville_naissance' 
                 palette=palette_originaire
 
-            df_merge = df_master.merge( df_top,left_on=secteur_naissance, 
+            df_merge = df_cette_ville.merge( df_top,left_on=secteur_naissance, 
                                     right_on='origine', how='left')
             df_merge['top_dep'] = df_merge['top_dep'].fillna('N')
             df_merge_st_top = df_merge.query("top_dep =='O' ").groupby([secteur_naissance,'classe_age'],
@@ -363,22 +372,21 @@ class ClsGraphScoreAge:
             mon_secteur_extreme = self.identifier_item_de_la_list(secteurs_extreme)
                 
             fig = px.imshow(df_heatmap,
-                            title=le_titre, #"Classe d'âge des exogènes et des originaires ",
+                            title="Classe d'âge et IMD ",
                             aspect="auto",
                             color_continuous_scale="Viridis",#"RdBu_r",
-                            labels=dict(color=indicateur),
-                            zmin=0,
-                            zmax=1,
+                            labels=dict(color="IMD"),
+                            zmin=-10,
+                            zmax=8,
             )
             # colorbar
             fig.update_coloraxes(
             colorbar=dict(
-                #tickvals=[-0.5, 0, 0.5],
-                tickvals=[0, 1],
+                tickvals=[-9,0,5],
                 ticktext=[
-                    "Stabilité géographique",
-                    #"Comportement National",
-                    "Forte mobilité" ]
+                    "Mobilité",
+                    "Neutre",
+                    "Ancrage" ]
                 )
             )
             # les couleurs 
@@ -470,34 +478,46 @@ class ClsGraphScoreAge:
             df_top.loc[df_top['origine']=='Autres','top_dep']='N'
 
             # creation du dataframe master sur lequel on effectue le graphe
-            df_master = self.df_fnl[self.df_fnl['ville_deces']==la_ville]
+            df_cette_ville = self.df_fnl[self.df_fnl['ville_deces']==la_ville]
 
-            if not secteurs_originaires:            
-                # tri des departements
-                df_top_ordre = df_top.query("origine!='Autres' & origine!=@la_ville").sort_values('valeur', 
-                                            ascending=False)['origine'].to_list()           
-                secteur_naissance = 'nom_departement_naissance' 
-                palette=palette_exogene            
-            else:
-                # tri des departements pour originaires
-                df_top_ordre = df_top.query("origine==@la_ville").sort_values('valeur', ascending=False)['origine'].to_list()
-                secteur_naissance = 'ville_naissance' 
-                palette=palette_originaire
-
-            df_merge = df_master.merge( df_top,left_on=secteur_naissance, 
-                                    right_on='origine', how='left')
-            df_merge['top_dep'] = df_merge['top_dep'].fillna('N')
-            df_merge_st_top = df_merge.query("top_dep =='O' ").groupby([secteur_naissance,'classe_age'],
-                                                                as_index= False,
-                                                                observed=True).agg(nb=('idligne','count'))      
+            labels = ['Urbaine','Départementale','Régionale','Nationale']
             
-            fig = px.bar(df_merge_st_top, x=secteur_naissance, y='nb',  color="classe_age", 
-                category_orders={
-                "classe_age": ["0-1", "1-20", "20-35", "35-50", "50-65", "65-90", "90+" ],
-                secteur_naissance: df_top_ordre},
-                color_discrete_sequence=palette,#px.colors.qualitative.T10,
-                barmode='group', 
-                title='your title')
+            df_cette_ville['mobility'] = 'Nationale'
+            df_cette_ville.loc[(df_cette_ville['origine_ville'] == 'O'), ["mobility"]] = ["Urbaine"]
+            df_cette_ville.loc[(df_cette_ville['origine_departement'] == 'O') & (df_cette_ville['origine_ville'] == 'N') , ["mobility"]] = ["Départementale"]
+            df_cette_ville.loc[(df_cette_ville['origine_region'] == 'O') & (df_cette_ville['origine_departement'] == 'N') & (df_cette_ville['origine_ville'] == 'N'), ["mobility"]] = ["Régionale"]
+            
+            df_m = df_cette_ville.groupby(['classe_age','mobility'],as_index= False,observed=True).agg(nb_deces=('idligne','count'))
+
+            fig = go.Figure()
+            #for ce_df in ma_liste:
+            fig.add_scatter(
+                    y=df_m['mobility'],
+                    x=df_m["classe_age"],
+                    text=df_m['classe_age'],     # colonne à afficher
+                    hoverinfo="text+x+y",           # ce qui apparaît
+                    mode="markers",
+                    marker=dict(
+                        colorscale="Viridis",        # affiche le type de couleur de la colorbar
+                        colorbar=dict(               # personnalise la colorbar
+                            title="Décès",#
+                            tickmode="array",        # ← IMPORTANT
+                        ),
+                        size=df_m['nb_deces'], #df_score[nb_non_origine], # affiche la taille en fonction de cette valeur
+                        color=df_m['nb_deces'],#+df_score[nb_non_origine] , # affiche la couleur en fonction de cette valeur
+                        showscale=True,              # affiche la colorbar
+                        sizemode="area", # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
+                        #sizeref=2.*max(df_score_[self.nb_deces])/(40.**2),
+                        opacity=0.6,
+                    ),                   
+                )         
+            
+            fig.update_layout(
+                yaxis=dict(
+                    categoryorder="array",
+                    categoryarray=labels,
+                )
+            )
             
             if self.df_fnl[self.df_fnl['origine_ville']=="O"]['origine_ville'].shape[0]==0 and secteurs_originaires==True:
                 # Annotation pour notifier l'abscence d'originaire            
@@ -512,14 +532,14 @@ class ClsGraphScoreAge:
                 )
             # preparation du titre du graphe
             if secteurs_originaires:
-                le_titre = f"Ages des défunts à {self.df_fnl.iloc[0,15]}"
+                le_titre = f"Déplacement des défunts et âges à {self.df_fnl.iloc[0,15]}"
             else:
-                le_titre = f"Origine et âges des défunts exogènes à {self.df_fnl.iloc[0,15]}"
+                le_titre = f"Déplacement des défunts et âges à {self.df_fnl.iloc[0,15]}"
 
             fig.update_layout(
                 title=le_titre,
-                xaxis = {"title" : "Secteur de naissance"},
-                yaxis = {"title" : "Nombre de décès"},
+                xaxis = {"title" : "Classe âge"},
+                yaxis = {"title" : "volume de défunts"},
                 paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
                 height=height_val,
                 width=500,

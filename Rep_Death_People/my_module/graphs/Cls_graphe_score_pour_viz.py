@@ -50,6 +50,7 @@ class ClsScorePourViz:
         self.distance_moyenne_nationale = distance_moyenne_nationale  
         # le dataframe reprenant les moyennes et ecart-type par classe d'age pour le national :
         self.le_df_ecart_type_moy_age = le_df_ecart_type_moy_age
+        
 
     def score_secteur(self, filtrer_age:bool = False)-> Tuple[pd.DataFrame, str, str, str, str] :
         '''
@@ -94,6 +95,24 @@ class ClsScorePourViz:
 
         # transforme pandas en polar 
         mon_pl = pl.DataFrame(self.df)
+
+        # Ajout de l'ecart type et moyenne nationaux :
+        if filtrer_age and self.le_df_ecart_type_moy_age is not None :
+            # les valeurs nationales sont distribuées selon age
+            mon_pl_score_nationaux = pl.DataFrame(self.le_df_ecart_type_moy_age)
+            mon_pl=mon_pl.join(
+                mon_pl_score_nationaux,
+                left_on="classe_age",
+                right_on="classe_age",
+                how="left"
+            )
+        else:
+            mon_pl = mon_pl.with_columns(
+                pl.lit(self.distance_moyenne_nationale).alias("moy_distance")
+            )
+            mon_pl = mon_pl.with_columns(
+                pl.lit(self.distance_ecart_type_national).alias("std_distance")
+            )
         
         # FILTRAGE/GROUPBY
         pl_cumul_secteur = (
@@ -118,6 +137,8 @@ class ClsScorePourViz:
                 .median().alias("med_distance_non_ori"),
                 (pl.col("distance").filter(pl.col(cette_origine) == "O"))
                 .median().alias("med_distance_ori"),
+                pl.col("moy_distance").mean().alias("moy_distance"),
+                pl.col("std_distance").mean().alias("std_distance"),
                 ((pl.col("distance") + 1).log()).sum().alias("log_distance_secteur"),  # somme des distances             
             ])    
             
@@ -131,7 +152,8 @@ class ClsScorePourViz:
                 ((pl.col("log_distance_secteur"))/pl.col("deces")).round(3).alias("mobilite_secteur"), # mobilité du secteur mondérée.               
             ])
             .with_columns([
-                ((self.distance_moyenne_nationale-pl.col("mobilite_secteur"))/self.distance_ecart_type_national).round(3).alias("IMD"), # indice de mobilité diffe.               
+               # ((self.distance_moyenne_nationale-pl.col("mobilite_secteur"))/self.distance_ecart_type_national).round(3).alias("IMD"), # indice de mobilité diffe.               
+                ((pl.col("moy_distance")-pl.col("mobilite_secteur"))/pl.col("std_distance")).round(3).alias("IMD"), # indice de mobilité diffe.               
             ])            
             .collect()
             )  

@@ -51,9 +51,6 @@ from Connexion_Bdd import ConnexionBdd
 # deces depuis 30 ans en Bdd
 ETAT_BDD = "NON_CHARGE"  # "DEJA_CHARGE" # "NON_CHARGE"
 
-# Initialisation une seule fois,j'essaye d'améliorer les perfs
-# mapply.init()
-
 ## -------------------------------------------------------------------------##
 #                                  FONCTIONS
 ## -------------------------------------------------------------------------##
