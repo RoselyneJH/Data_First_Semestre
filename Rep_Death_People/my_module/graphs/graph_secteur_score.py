@@ -3,244 +3,260 @@ import plotly.graph_objects as go
 import pandas as pd
 import polars as pl
 from typing import Tuple
+import numpy as np
 
 # Acceder à la classe de filtrage des données
 # from Cls_graphe_score_pour_viz  import ClsScorePourViz
 
-from my_module.graphs.Cls_graphe_score_pour_viz  import ClsScorePourViz
+from my_module.graphs.Cls_graphe_score_pour_viz import ClsScorePourViz
+
 
 class ClsGraphScore:
 
-
-    def __init__(self, df_fnl: pd.DataFrame, nom_secteur:str, 
-                 origine_secteur:str,
-                 ecart_type_national:float=1.0,
-                 moyenne_nationale:float=0.0,
-                 ):
-
+    def __init__(
+        self,
+        df_fnl: pd.DataFrame,
+        nom_secteur: str,
+        origine_secteur: str,
+        ecart_type_national: float = 1.0,
+        moyenne_nationale: float = 0.0,
+    ):
         """
         Initialise le graphe pour une meilleur pagination
 
         Args:
             df_fnl        : dataframe
             nom_secteur   : nom du secteur à traiter
-            cette_origine : origine 
+            cette_origine : origine
             ecart_type national si le score selectionné est la distance (IMD)
             moyenne nationale si le score selectionné est la distance (IMD)
-            
-        
+
+
         """
         self.df_fnl = df_fnl
         self.nom_secteur = nom_secteur
         self.origine_secteur = origine_secteur
         self.ecart_type_national = ecart_type_national
         self.moyenne_nationale = moyenne_nationale
-        
 
-        self.class_filtrage = ClsScorePourViz(self.df_fnl, self.nom_secteur, 
-                                            self.origine_secteur,
-                                            self.ecart_type_national,
-                                            self.moyenne_nationale,
-                                            )
+        self.class_filtrage = ClsScorePourViz(
+            self.df_fnl,
+            self.nom_secteur,
+            self.origine_secteur,
+            self.ecart_type_national,
+            self.moyenne_nationale,
+        )
         self.df_score, self.nb_deces = self.class_filtrage.score_secteur()
         self.pages = self.class_filtrage.pages
-        
 
     @property
     def nombre_de_page(self):
-        return self.pages    
+        return self.pages
 
-
-    def render_graph_score(self, page:int = 0) -> Tuple[go.Figure(), pd.DataFrame, str] :
-        '''
+    def render_graph_score(
+        self, page: int = 0
+    ) -> Tuple[go.Figure(), pd.DataFrame, str]:
+        """
         Initialise le traitement du graph
 
             Args:
                 page en lecture
-            
+
             Return:
                 fig : une figure, graphe
                 df  : dataframe
-        '''
+        """
         height_val = 580
         texte_sur_secteur_sans_deces_originaire = ""
-        
+
         # graphe :
         # Alors secteur différent d'une ville ou bien departement = region (df_score=1)
         # vue region, departement, sinon graphe suivant :
-        if len(self.df_score)>=1 and not (self.origine_secteur == "origine_ville"): 
+        if len(self.df_score) >= 1 and not (self.origine_secteur == "origine_ville"):
             # Alors on pagine
-            df_score = self.class_filtrage.liste_des_df_secteur[page]  
+            df_score = self.class_filtrage.liste_des_df_secteur[page]
             fig = go.Figure()
-            if self.class_filtrage.nb_secteur_sans_deces_originaire >0:
-                ce_nom_secteur = self.nom_secteur.replace("deces","").replace("_","").replace("nom","")
-                texte_sur_secteur_sans_deces_originaire = "⚠️ Il y a "+str(self.class_filtrage.nb_secteur_sans_deces_originaire)
-                texte_sur_secteur_sans_deces_originaire = texte_sur_secteur_sans_deces_originaire+" "+ce_nom_secteur +"(s)"
-                texte_sur_secteur_sans_deces_originaire = texte_sur_secteur_sans_deces_originaire +" sans décès d'originaire. "
-                
-            df_score_ = df_score.sort_values(self.nom_secteur, ascending = False) 
+            if self.class_filtrage.nb_secteur_sans_deces_originaire > 0:
+                ce_nom_secteur = (
+                    self.nom_secteur.replace("deces", "")
+                    .replace("_", "")
+                    .replace("nom", "")
+                )
+                texte_sur_secteur_sans_deces_originaire = "⚠️ Il y a " + str(
+                    self.class_filtrage.nb_secteur_sans_deces_originaire
+                )
+                texte_sur_secteur_sans_deces_originaire = (
+                    texte_sur_secteur_sans_deces_originaire
+                    + " "
+                    + ce_nom_secteur
+                    + "(s)"
+                )
+                texte_sur_secteur_sans_deces_originaire = (
+                    texte_sur_secteur_sans_deces_originaire
+                    + " sans décès d'originaire. "
+                )
 
-            if len(df_score_)>0:
+            df_score_ = df_score.sort_values(self.nom_secteur, ascending=False)
+
+            if len(df_score_) > 0:
                 fig.add_scatter(
                     y=df_score_[self.nom_secteur],
                     x=df_score_["TAFV"],
-                    text=df_score_[self.nom_secteur],     # colonne à afficher
-                    hoverinfo="text+x+y",           # ce qui apparaît
+                    text=df_score_[self.nom_secteur],  # colonne à afficher
+                    hoverinfo="text+x+y",  # ce qui apparaît
                     mode="markers",
                     marker=dict(
-                        colorscale="Viridis",        # affiche le type de couleur de la colorbar
-                        colorbar=dict(               # personnalise la colorbar
-                            title="Décès",#
-                            tickmode="array",        # ← IMPORTANT
+                        colorscale="Viridis",  # affiche le type de couleur de la colorbar
+                        colorbar=dict(  # personnalise la colorbar
+                            title="Décès",  #
+                            tickmode="array",  # ← IMPORTANT
                         ),
-                        size=df_score_[self.nb_deces], #df_score[nb_non_origine], # affiche la taille en fonction de cette valeur
-                        color=df_score_[self.nb_deces],#+df_score[nb_non_origine] , # affiche la couleur en fonction de cette valeur
-                        showscale=True,              # affiche la colorbar
-                        sizemode="area", # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
-                        sizeref=2.*max(df_score_[self.nb_deces])/(40.**2),
+                        size=df_score_[
+                            self.nb_deces
+                        ],  # df_score[nb_non_origine], # affiche la taille en fonction de cette valeur
+                        color=df_score_[
+                            self.nb_deces
+                        ],  # +df_score[nb_non_origine] , # affiche la couleur en fonction de cette valeur
+                        showscale=True,  # affiche la colorbar
+                        sizemode="area",  # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
+                        sizeref=2.0 * max(df_score_[self.nb_deces]) / (40.0**2),
                         opacity=0.6,
                     ),
-                )           
-
-                x_fin = 0.80 # 
-                fig.add_annotation(
-                x=x_fin,         
-                y=-0.55,    # sur l’axe des abscisses
-                xref="x",
-                yref="y",
-                showarrow=False,
-                text="Originaires",
-                font=dict(size=12, color="blue"),
                 )
-                
-                x_deb = 0.15 #
+
+                x_fin = 0.80  #
                 fig.add_annotation(
-                x=x_deb,              
-                y=-0.55,    # sur l’axe des abscisses
-                xref="x",
-                yref="y",
-                showarrow=False,
-                text="Exogènes",
-                font=dict(size=12, color="blue"),
+                    x=x_fin,
+                    y=-0.55,  # sur l’axe des abscisses
+                    xref="x",
+                    yref="y",
+                    showarrow=False,
+                    text="Originaires",
+                    font=dict(size=12, color="blue"),
+                )
+
+                x_deb = 0.15  #
+                fig.add_annotation(
+                    x=x_deb,
+                    y=-0.55,  # sur l’axe des abscisses
+                    xref="x",
+                    yref="y",
+                    showarrow=False,
+                    text="Exogènes",
+                    font=dict(size=12, color="blue"),
                 )
                 # Annotation pour identifier la tendance de cette zone
                 fig.add_annotation(
-                    x=0,                        # 
-                    y=1.05,                        
+                    x=0,  #
+                    y=1.05,
                     xref="paper",
-                    yref="paper", # paper =coordonées relative à la feuille
+                    yref="paper",  # paper =coordonées relative à la feuille
                     showarrow=False,
                     text=self.class_filtrage.etat_global_de_ces_secteurs,
                     font=dict(size=12, color="blue"),
                 )
-                
-                fig.add_vline(
-                        x=0.3,
-                        line_dash="dash",
-                        line_color="white"
-                )
-                fig.add_vline(
-                        x=0.6,
-                        line_dash="dash",
-                        line_color="white"
-                )
+
+                fig.add_vline(x=0.3, line_dash="dash", line_color="white")
+                fig.add_vline(x=0.6, line_dash="dash", line_color="white")
 
                 fig.update_layout(
-                    xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti   
-                    title= "Répartition du TAFV par zone géographique",
-                    showlegend=False, # desactive la legende pour les 2 add_scatter
+                    xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
+                    title="Répartition du TAFV par zone géographique",
+                    showlegend=False,  # desactive la legende pour les 2 add_scatter
                     xaxis_title="TAFV",
                     yaxis_title="Secteur",
                     plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
                     paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
                     height=height_val,
-                    margin=dict(t=80, b=50, l=50, r=50), # permet d'avoir même hauteur de graphe
-                    title_x=0.2, # centre le titre du graphique
+                    margin=dict(
+                        t=80, b=50, l=50, r=50
+                    ),  # permet d'avoir même hauteur de graphe
+                    title_x=0.2,  # centre le titre du graphique
                 )
-                        
-                return fig, texte_sur_secteur_sans_deces_originaire ,df_score
+
+                return fig, texte_sur_secteur_sans_deces_originaire, df_score
             else:
                 fig.add_scatter(
                     y=df_score[self.nom_secteur],
                     x=df_score["TAFV"],
-                    text=df_score[self.nom_secteur],     # colonne à afficher
-                    hoverinfo="text+x+y",           # ce qui apparaît
+                    text=df_score[self.nom_secteur],  # colonne à afficher
+                    hoverinfo="text+x+y",  # ce qui apparaît
                     mode="markers",
                     marker=dict(
-                        colorscale="Viridis",        # affiche le type de couleur de la colorbar
-                        colorbar=dict(# personnalise la colorbar
-                            title="Décès",#
-                            tickmode="array",   # ← IMPORTANT
+                        colorscale="Viridis",  # affiche le type de couleur de la colorbar
+                        colorbar=dict(  # personnalise la colorbar
+                            title="Décès",  #
+                            tickmode="array",  # ← IMPORTANT
                         ),
-                        size=df_score[self.nb_deces], # affiche la taille en fonction de cette valeur
-                        color=df_score[self.nb_deces], # affiche la couleur en fonction de cette valeur
-                        showscale=True,              # affiche la colorbar
-                        sizemode="area", # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
-                        sizeref=2.*max(self.df_score[self.nb_deces])/(40.**2),
+                        size=df_score[
+                            self.nb_deces
+                        ],  # affiche la taille en fonction de cette valeur
+                        color=df_score[
+                            self.nb_deces
+                        ],  # affiche la couleur en fonction de cette valeur
+                        showscale=True,  # affiche la colorbar
+                        sizemode="area",  # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
+                        sizeref=2.0 * max(self.df_score[self.nb_deces]) / (40.0**2),
                         opacity=0.6,
                     ),
-                )           
-
-                x_fin = 0.80 # 
-                fig.add_annotation(
-                x=x_fin,         
-                y=-0.55,    # sur l’axe des abscisses
-                xref="x",
-                yref="y",
-                showarrow=False,
-                text="Originaires",
-                font=dict(size=12, color="blue"),
                 )
-                
-                x_deb = 0.15 #
+
+                x_fin = 0.80  #
                 fig.add_annotation(
-                x=x_deb,              
-                y=-0.55,    # sur l’axe des abscisses
-                xref="x",
-                yref="y",
-                showarrow=False,
-                text="Exogènes",
-                font=dict(size=12, color="blue"),
+                    x=x_fin,
+                    y=-0.55,  # sur l’axe des abscisses
+                    xref="x",
+                    yref="y",
+                    showarrow=False,
+                    text="Originaires",
+                    font=dict(size=12, color="blue"),
+                )
+
+                x_deb = 0.15  #
+                fig.add_annotation(
+                    x=x_deb,
+                    y=-0.55,  # sur l’axe des abscisses
+                    xref="x",
+                    yref="y",
+                    showarrow=False,
+                    text="Exogènes",
+                    font=dict(size=12, color="blue"),
                 )
                 # Annotation pour identifier la tendance de cette zone
                 fig.add_annotation(
-                    x=0,                        # 
-                    y=1.05,                        
+                    x=0,  #
+                    y=1.05,
                     xref="paper",
-                    yref="paper", # paper =coordonées relative à la feuille
+                    yref="paper",  # paper =coordonées relative à la feuille
                     showarrow=False,
                     text=self.class_filtrage.etat_global_de_ces_secteurs,
                     font=dict(size=14, color="blue"),
                 )
-                
-                fig.add_vline(
-                        x=0.3,
-                        line_dash="dash",
-                        line_color="white"
-                )
-                fig.add_vline(
-                        x=0.6,
-                        line_dash="dash",
-                        line_color="white"
-                )
+
+                fig.add_vline(x=0.3, line_dash="dash", line_color="white")
+                fig.add_vline(x=0.6, line_dash="dash", line_color="white")
 
                 fig.update_layout(
-                    xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti   
+                    xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
                     title="Secteurs à fort ancrage territorial ou à forte attractivité ",
-                    showlegend=False, # desactive la legende pour les 2 add_scatter
+                    showlegend=False,  # desactive la legende pour les 2 add_scatter
                     xaxis_title="TAFV",
                     yaxis_title="Secteur",
                     plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
                     paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
                     height=height_val,
-                    margin=dict(t=80, b=50, l=50, r=50), # permet d'avoir même hauteur de graphe
-                    title_x=0.2, # centre le titre du graphique
+                    margin=dict(
+                        t=80, b=50, l=50, r=50
+                    ),  # permet d'avoir même hauteur de graphe
+                    title_x=0.2,  # centre le titre du graphique
                 )
-                        
-                return fig, texte_sur_secteur_sans_deces_originaire,self.df_score
-                    
-        else:        
-            df_plot = self.class_filtrage.preparation_treemap(self.df_fnl,self.df_fnl.iloc[0,15])
+
+                return fig, texte_sur_secteur_sans_deces_originaire, self.df_score
+
+        else:
+            df_plot = self.class_filtrage.preparation_treemap(
+                self.df_fnl, self.df_fnl.iloc[0, 15]
+            )
             # 7️⃣ Treemap
             fig = px.treemap(
                 df_plot,
@@ -250,7 +266,7 @@ class ClsGraphScore:
                 color_discrete_map={
                     "Originaire": "#A9E24E",
                     "Exogene": "#81B0E3",
-                }
+                },
             )
             fig.update_traces(textinfo="label+percent entry")
 
@@ -259,153 +275,172 @@ class ClsGraphScore:
                 paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
                 height=height_val,
                 width=400,
-                )
-            return fig, "", self.df_fnl  
-        
-    def render_graph_score_IMD(self, page:int = 0, indicateur :str="IMD",
-                            ) -> Tuple[go.Figure(), pd.DataFrame, str] :
-        '''
+            )
+            return fig, "", self.df_fnl
+
+    def render_graph_score_IMD(
+        self,
+        page: int = 0,
+        indicateur: str = "IMD",
+    ) -> Tuple[go.Figure(), pd.DataFrame, str]:
+        """
         Initialise le traitement du graph
 
             Args:
                 page en lecture
-                choix de l'indicateur à visualiser : TAFV ou IMD                 
-            
+                choix de l'indicateur à visualiser : TAFV ou IMD
+
             Return:
                 fig : une figure, graphe
                 df  : dataframe
-        '''
+        """
         height_val = 580
         texte_sur_secteur_sans_deces_originaire = ""
-        if indicateur =="IMD":
-            le_titre = "Mobilité différentielle (IMD)" #"Répartition de l'"+indicateur+" par zone géographique"
-        
+        if indicateur == "IMD":
+            le_titre = "Mobilité différentielle (IMD)"  # "Répartition de l'"+indicateur+" par zone géographique"
+
         # graphe :
         # Alors secteur différent d'une ville ou bien departement = region (df_score=1)
         # vue region, departement, sinon graphe suivant :
-        if len(self.df_score)>=1 and not (self.origine_secteur == "origine_ville"): 
-                # Alors on pagine
-                df_score = self.class_filtrage.liste_des_df_secteur[page]  
-                fig = go.Figure()
-                if self.class_filtrage.nb_secteur_sans_deces_originaire >0:
-                    ce_nom_secteur = self.nom_secteur.replace("deces","").replace("_","").replace("nom","")
-                    texte_sur_secteur_sans_deces_originaire = "⚠️ Il y a "+str(self.class_filtrage.nb_secteur_sans_deces_originaire)
-                    texte_sur_secteur_sans_deces_originaire = texte_sur_secteur_sans_deces_originaire+" "+ce_nom_secteur +"(s)"
-                    texte_sur_secteur_sans_deces_originaire = texte_sur_secteur_sans_deces_originaire +" sans décès d'originaire. "
-                    
-                df_score_ = df_score.sort_values(self.nom_secteur, ascending = False) 
+        if len(self.df_score) >= 1 and not (self.origine_secteur == "origine_ville"):
+            # Alors on pagine
+            df_score = self.class_filtrage.liste_des_df_secteur[page]
+            fig = go.Figure()
+            if self.class_filtrage.nb_secteur_sans_deces_originaire > 0:
+                ce_nom_secteur = (
+                    self.nom_secteur.replace("deces", "")
+                    .replace("_", "")
+                    .replace("nom", "")
+                )
+                texte_sur_secteur_sans_deces_originaire = "⚠️ Il y a " + str(
+                    self.class_filtrage.nb_secteur_sans_deces_originaire
+                )
+                texte_sur_secteur_sans_deces_originaire = (
+                    texte_sur_secteur_sans_deces_originaire
+                    + " "
+                    + ce_nom_secteur
+                    + "(s)"
+                )
+                texte_sur_secteur_sans_deces_originaire = (
+                    texte_sur_secteur_sans_deces_originaire
+                    + " sans décès d'originaire. "
+                )
 
-                if len(df_score_)>0:
-                    fig.add_scatter(
-                        y=df_score_[self.nom_secteur],
-                        x=df_score_[indicateur],
-                        text=df_score_[self.nom_secteur],     # colonne à afficher
-                        hoverinfo="text+x+y",           # ce qui apparaît
-                        mode="markers",
-                        marker=dict(
-                            colorscale="Viridis",        # affiche le type de couleur de la colorbar
-                            colorbar=dict(               # personnalise la colorbar
-                                title="Décès",#
-                                tickmode="array",        # ← IMPORTANT
-                            ),
-                            size=df_score_[self.nb_deces], #df_score[nb_non_origine], # affiche la taille en fonction de cette valeur
-                            color=df_score_[self.nb_deces],#+df_score[nb_non_origine] , # affiche la couleur en fonction de cette valeur
-                            showscale=True,              # affiche la colorbar
-                            sizemode="area", # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
-                            sizeref=2.*max(df_score_[self.nb_deces])/(40.**2),
-                            opacity=0.6,
+            df_score_ = df_score.sort_values(self.nom_secteur, ascending=False)
+
+            if len(df_score_) > 0:
+                fig.add_scatter(
+                    y=df_score_[self.nom_secteur],
+                    x=df_score_[indicateur],
+                    text=df_score_[self.nom_secteur],  # colonne à afficher
+                    hoverinfo="text+x+y",  # ce qui apparaît
+                    mode="markers",
+                    marker=dict(
+                        colorscale="Viridis",  # affiche le type de couleur de la colorbar
+                        colorbar=dict(  # personnalise la colorbar
+                            title="Décès",  #
+                            tickmode="array",  # ← IMPORTANT
                         ),
-                    )           
+                        size=df_score_[
+                            self.nb_deces
+                        ],  # df_score[nb_non_origine], # affiche la taille en fonction de cette valeur
+                        color=df_score_[
+                            self.nb_deces
+                        ],  # +df_score[nb_non_origine] , # affiche la couleur en fonction de cette valeur
+                        showscale=True,  # affiche la colorbar
+                        sizemode="area",  # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
+                        sizeref=2.0 * max(df_score_[self.nb_deces]) / (40.0**2),
+                        opacity=0.6,
+                    ),
+                )
 
-                    x_fin = -1.0 # 
-                    fig.add_annotation(
-                    x=x_fin,         
-                    y=-0.55,    # sur l’axe des abscisses
+                x_fin = -1.0  #
+                fig.add_annotation(
+                    x=x_fin,
+                    y=-0.55,  # sur l’axe des abscisses
                     xref="x",
                     yref="y",
                     showarrow=False,
                     text="Mobilité",
                     font=dict(size=12, color="blue"),
-                    )
+                )
 
-                    #x_fin = 0.00 # 
-                    #fig.add_annotation(
-                    #x=x_fin,         
-                    #y=-0.55,    # sur l’axe des abscisses
-                    #xref="x",
-                    #yref="y",
-                    #showarrow=False,
-                    #text="Neutre",
-                    #font=dict(size=12, color="blue"),
-                    #)
-                    
-                    x_deb = 1.0 #
-                    fig.add_annotation(
-                    x=x_deb,              
-                    y=-0.55,    # sur l’axe des abscisses
+                x_deb = 1.0  #
+                fig.add_annotation(
+                    x=x_deb,
+                    y=-0.55,  # sur l’axe des abscisses
                     xref="x",
                     yref="y",
                     showarrow=False,
                     text="Ancrage",
                     font=dict(size=12, color="blue"),
-                    )
-                    # Annotation pour identifier la tendance de cette zone
-                    fig.add_annotation(
-                        x=0,                        # 
-                        y=1.05,                        
-                        xref="paper",
-                        yref="paper", # paper =coordonées relative à la feuille
-                        showarrow=False,
-                        text=self.class_filtrage.etat_global_de_ces_secteurs,
-                        font=dict(size=14, color="blue"),
-                    )
-                    
-                    fig.add_vline(
-                            x=-0,
-                            line_dash="dash",
-                            line_color="white"
-                    )
-                    #fig.add_vline(
-                    #        x=0.5,
-                    #        line_dash="dash",
-                    #        line_color="white"
-                    #)
-                    
-                    fig.update_layout(
-                        xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti   
-                        title= le_titre,#"Répartition du TAFV par zone géographique",
-                        showlegend=False, # desactive la legende pour les 2 add_scatter
-                        xaxis_title=indicateur,
-                        yaxis_title="Secteur",
-                        plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
-                        paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
-                        height=height_val,
-                        margin=dict(t=80, b=50, l=50, r=50), # permet d'avoir même hauteur de graphe
-                        title_x=0.2, # centre le titre du graphique
-                    )
-                            
-                    return fig, texte_sur_secteur_sans_deces_originaire ,df_score
-                #else:                   
-                    
-        else:        
-            df_plot = self.class_filtrage.preparation_treemap(self.df_fnl,self.df_fnl.iloc[0,15])
-            # 7️⃣ Treemap
-            fig = px.treemap(
-                df_plot,
-                path=["statut", "origine"],
-                values="valeur",
-                color="statut",
-                color_discrete_map={
-                    "Originaire": "#A9E24E",
-                    "Exogene": "#81B0E3",
-                }
+                )
+                # Annotation pour identifier la tendance de cette zone
+                fig.add_annotation(
+                    x=0,  #
+                    y=1.05,
+                    xref="paper",
+                    yref="paper",  # paper =coordonées relative à la feuille
+                    showarrow=False,
+                    text=self.class_filtrage.etat_global_de_ces_secteurs,
+                    font=dict(size=14, color="blue"),
+                )
+
+                fig.add_vline(x=-0, line_dash="dash", line_color="white")
+                fig.update_layout(
+                    xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
+                    title=le_titre,  # "Répartition du TAFV par zone géographique",
+                    showlegend=False,  # desactive la legende pour les 2 add_scatter
+                    xaxis_title=indicateur,
+                    yaxis_title="Secteur",
+                    plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
+                    paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
+                    height=height_val,
+                    margin=dict(
+                        t=80, b=50, l=50, r=50
+                    ),  # permet d'avoir même hauteur de graphe
+                    title_x=0.2,  # centre le titre du graphique
+                )
+                return fig, texte_sur_secteur_sans_deces_originaire, df_score
+
+        else:
+            # creation de la colonne mobility
+            df_cette_ville = self.df_fnl.copy()
+            df_cette_ville["distance_log"] = np.log1p(df_cette_ville["distance"])
+            df_cette_ville["IMD"] = round(
+                (
+                    (self.ecart_type_national - df_cette_ville["distance_log"])
+                    / self.ecart_type_national
+                ),
+                2,
             )
-            fig.update_traces(textinfo="label+percent entry")
+            df_cette_ville["mobility"] = "Nationale"
+            df_cette_ville.loc[
+                (df_cette_ville["origine_ville"] == "O"), ["mobility"]
+            ] = ["Urbaine"]
+            df_cette_ville.loc[
+                (df_cette_ville["origine_departement"] == "O")
+                & (df_cette_ville["origine_ville"] == "N"),
+                ["mobility"],
+            ] = ["Départementale"]
+            df_cette_ville.loc[
+                (df_cette_ville["origine_region"] == "O")
+                & (df_cette_ville["origine_departement"] == "N")
+                & (df_cette_ville["origine_ville"] == "N"),
+                ["mobility"],
+            ] = ["Régionale"]
+
+            fig = px.scatter(
+                df_cette_ville,
+                y="IMD",
+                x="age",
+                color="mobility",
+            )
 
             fig.update_layout(
                 title=f"D'ou viennent les défunts du secteur {self.df_fnl.iloc[0,15]} ? <br>Quelles sont les proportions ? <br>",
                 paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
                 height=height_val,
                 width=400,
-                )
+            )
             return fig, "", self.df_fnl
