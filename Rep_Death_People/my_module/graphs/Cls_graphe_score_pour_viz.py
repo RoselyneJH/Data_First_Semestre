@@ -86,7 +86,7 @@ class ClsScorePourViz:
 
         # liste des secteurs descendant afin de préparer le filtre
         liste_secteur = [
-            "pays_naissance",
+            "pays_deces", #"pays_naissance",
             "nom_region_deces",
             "nom_departement_deces",
             "ville_deces",
@@ -94,13 +94,14 @@ class ClsScorePourViz:
         # initialisation de la liste
         liste_a_traiter = []
         position = -1
+        
         # processus de creation du groupby/filtre sectoriel
         for ind, item in enumerate(liste_secteur):
             if position < 0:
                 liste_a_traiter.append(item)
             if item == self.ce_ss_secteur and ind > 0:
                 position = ind
-
+         
         la_liste_sans_filtre_age = liste_a_traiter.copy()
 
         if filtrer_age:
@@ -127,11 +128,11 @@ class ClsScorePourViz:
             mon_pl = mon_pl.with_columns(
                 pl.lit(self.distance_ecart_type_national).alias("std_distance")
             )
-
+        
         # FILTRAGE/GROUPBY
         pl_cumul_secteur = (
             mon_pl.lazy()
-            .filter(pl.col("pays_naissance").is_in(["FRANCE"]))  # !
+            #.filter(pl.col("pays_naissance").is_in(["FRANCE"]))  # !
             .group_by(liste_a_traiter)
             .agg(
                 [
@@ -196,7 +197,7 @@ class ClsScorePourViz:
         # d'ou l'interet de ce regroupement => conserver l'ordre
         pl_cumul_secteur_restreint = (
             mon_pl.lazy()
-            .filter(pl.col("pays_naissance").is_in(["FRANCE"]))
+        #    .filter(pl.col("pays_naissance").is_in(["FRANCE"]))
             .group_by(la_liste_sans_filtre_age)
             .agg(
                 (pl.col("idligne").count().alias("deces")),

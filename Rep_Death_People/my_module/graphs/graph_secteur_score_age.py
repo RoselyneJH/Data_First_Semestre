@@ -226,6 +226,9 @@ class ClsGraphScoreAge:
             )
             return fig  # , self.class_filtrage.liste_des_df_secteur[page]
         else:
+            if secteurs_originaires:
+                print("self.df_fnl  >> ", self.df_fnl.info())
+
             palette_originaire = [
                 "#FFFDE7",
                 "#FFF59D",
@@ -254,7 +257,7 @@ class ClsGraphScoreAge:
             # Ajout d'un top pour identifier les  departements topés et identifiés
             df_top["top_dep"] = "O"
             df_top.loc[df_top["origine"] == "Autres", "top_dep"] = "N"
-
+            
             # creation du dataframe master sur lequel on effectue le graphe
             df_cette_ville = self.df_fnl[self.df_fnl["ville_deces"] == la_ville]
 
@@ -274,7 +277,12 @@ class ClsGraphScoreAge:
                     .sort_values("valeur", ascending=False)["origine"]
                     .to_list()
                 )
-                secteur_naissance = "ville_naissance"
+                # est une agglomeration ? ,df_merge_st_top,"secteur_naissance"
+                if la_ville =='PARIS' or la_ville =='LYON' or la_ville =='MARSEILLE':
+                    secteur_naissance="nom_departement_naissance"
+                else:
+                    secteur_naissance = "ville_naissance"
+                
                 palette = palette_originaire
 
             df_merge = df_cette_ville.merge(
@@ -288,7 +296,7 @@ class ClsGraphScoreAge:
                 )
                 .agg(nb=("idligne", "count"))
             )
-
+            print("df_merge_st_top >",secteur_naissance,"-",df_merge_st_top)
             fig = px.bar(
                 df_merge_st_top,
                 x=secteur_naissance,
@@ -306,11 +314,11 @@ class ClsGraphScoreAge:
                     ],
                     secteur_naissance: df_top_ordre,
                 },
-                color_discrete_sequence=palette,  # px.colors.qualitative.T10,
+                color_discrete_sequence=palette,  # 
                 barmode="group",
                 title="your title",
             )
-
+            
             if (
                 self.df_fnl[self.df_fnl["origine_ville"] == "O"]["origine_ville"].shape[
                     0
@@ -532,9 +540,9 @@ class ClsGraphScoreAge:
             # creation du dataframe master sur lequel on effectue le graphe
             df_cette_ville = self.df_fnl[self.df_fnl["ville_deces"] == la_ville]
 
-            labels = ["Urbaine", "Départementale", "Régionale", "Nationale"]
+            labels = ["Urbaine", "Départementale", "Régionale", "Nationale","Internationale"]
             # creation de la colonne mobility
-            df_cette_ville["mobility"] = "Nationale"
+            df_cette_ville["mobility"] = "Internationale"
             df_cette_ville.loc[
                 (df_cette_ville["origine_ville"] == "O"), ["mobility"]
             ] = ["Urbaine"]
@@ -549,13 +557,20 @@ class ClsGraphScoreAge:
                 & (df_cette_ville["origine_ville"] == "N"),
                 ["mobility"],
             ] = ["Régionale"]
+            df_cette_ville.loc[
+                (df_cette_ville["origine_nationale"] == "O")
+                & (df_cette_ville["origine_region"] == "N")
+                & (df_cette_ville["origine_departement"] == "N")
+                & (df_cette_ville["origine_ville"] == "N"),
+                ["mobility"],
+            ] = ["Nationale"]
 
             df_m = df_cette_ville.groupby(
                 ["classe_age", "mobility"], as_index=False, observed=True
             ).agg(nb_deces=("idligne", "count"))
 
             fig = go.Figure()
-            # for ce_df in ma_liste:
+            # 
             fig.add_scatter(
                 y=df_m["mobility"],
                 x=df_m["classe_age"],
@@ -570,10 +585,10 @@ class ClsGraphScoreAge:
                     ),
                     size=df_m[
                         "nb_deces"
-                    ],  # df_score[nb_non_origine], # affiche la taille en fonction de cette valeur
+                    ],  # affiche la taille en fonction de cette valeur
                     color=df_m[
                         "nb_deces"
-                    ],  # +df_score[nb_non_origine] , # affiche la couleur en fonction de cette valeur
+                    ],  # affiche la couleur en fonction de cette valeur
                     showscale=True,  # affiche la colorbar
                     sizemode="area",  # defini la zone d'utilisation homogenéité des marqueurs par defaut cette valeur
                     opacity=0.6,

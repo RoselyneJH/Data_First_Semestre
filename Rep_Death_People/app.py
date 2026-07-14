@@ -110,6 +110,9 @@ def load_dataframe() -> pd.DataFrame:
 
     df = my_class.creation_classe_age(df_person_nais_dece_departement_region)
 
+    # toutes ces personnes sont mortes en France :
+    df['pays_deces'] ='FRANCE' # cela permet d'ajuster la hierarchie des secteurs de deces
+
     mon_pl = pl.DataFrame(df)
     df_polars = mon_pl.group_by(
         [
@@ -154,7 +157,7 @@ def moyenne_ecart_type_national(df_fnl: pd.DataFrame) -> Tuple:
 
     df_polars = (
         mon_pl.lazy()
-        .filter(pl.col("pays_naissance").is_in(["FRANCE"]))
+    #    .filter(pl.col("pays_naissance").is_in(["FRANCE"]))
         .select(
             [
                 ((pl.col("distance") + 1).log())
@@ -180,7 +183,7 @@ def moyenne_ecart_type_national(df_fnl: pd.DataFrame) -> Tuple:
 
     df_polars_age = (
         mon_pl.lazy()
-        .filter(pl.col("pays_naissance").is_in(["FRANCE"]))
+    #    .filter(pl.col("pays_naissance").is_in(["FRANCE"]))
         .group_by("classe_age")
         .agg(
             [
@@ -457,6 +460,8 @@ else:
 
 # ComboBox Ville
 
+cette_agglomeration=""
+
 with st.sidebar:
     villes = ["Toutes les villes"] + sorted(df_dept["ville_deces"].unique().tolist())
     # pour eviter de selectionner des villes sur des départements différents, j'active l'option disabled
@@ -467,23 +472,32 @@ with st.sidebar:
         help="Choisissez un département pour activer la sélection des villes",
     )
     # initialisation case à cocher :
-    agglomeration = False
-    ville_standard = True
+    agglomeration = False # la case à cocher "agglomeration" est non cochée [init]
+    
+    # boolean sur type de ville standard =(paris 6 ieme, Bordeaux, valencienne, St denis...) ou agglomération (PARIS, LYON, MARSEILLE)
+    ville_standard = True # Est ce une ville standard ? on initalise à oui [init]
+
     if (
         ville_selected.startswith("PARIS")
         or ville_selected.startswith("MARSEILLE")
         or ville_selected.startswith("LYON")
     ):
         ville_standard = False
+        cette_agglomeration = ville_selected.split()[0]
+        le_libelle_agg = "Agglomération de " + cette_agglomeration
 
     if (not ville_standard) & (not ville_selected == "Toutes les villes"):
-        agglomeration = st.checkbox(label="Aggl.", disabled=ville_standard)
+        agglomeration = st.checkbox(label=le_libelle_agg, disabled=ville_standard, 
+        help ="Regrouper les résultats de l'agglomération")
 
 
 # Filtrage selon la ville
 if ville_selected == "Toutes les villes":
     df_final_ = df_dept.copy()
     df_fnl_ = df_dpt.copy()
+elif agglomeration :
+    df_final_ = df_dept[df_dept["ville_deces"].str.contains(cette_agglomeration)]
+    df_fnl_ = df_dpt[df_dpt["ville_deces"].str.contains(cette_agglomeration)]
 else:
     df_final_ = df_dept[df_dept["ville_deces"] == ville_selected]
     df_fnl_ = df_dpt[df_dpt["ville_deces"] == ville_selected]
@@ -526,7 +540,7 @@ start, end = st.sidebar.slider(
 df_final = df_final_f[(df_final_f["age"] >= start) & (df_final_f["age"] <= end)]
 
 df_fnl = df_fnl_f[(df_fnl_f["age"] >= start) & (df_fnl_f["age"] <= end)]
-
+ 
 # -------------------------------------------------------------------------------------
 st.write("Auteur : R.Jean / Source : https://www.insee.fr/fr/statistiques")
 # -------------------------------------------------------------------------------------
@@ -586,19 +600,27 @@ if restitution_des_valeurs:
         }
 
     # -------------------------------------------------------------------------------------
-    # permet de toper l'affichage max des villes dans un département
-    # sur le graphe tx mortalité vs originaire
-    # nb_energ = 30
-    # ordre_tri = False
-    # precision = 3
 
     # === Préparation des données pour la carte ===
     if ville_selected != "Toutes les villes":
-        df_list = df_final.query("ville_deces == @ville_selected")
-        # ➜ chaque ligne renvoie un cumul de personnes decedées
-        df_map = df_list.groupby(["ville_deces"], as_index=False).agg(
-            {"lat": "mean", "lon": "mean", "nb_deces": "sum"}
-        )
+        
+        if not agglomeration:
+            #df_list = df_final.query("ville_deces == @ville_selected")
+            df_fnl_m = df_fnl.query("ville_deces == @ville_selected")
+            
+            # ➜ chaque ligne renvoie un cumul de personnes decedées
+            df_map = df_final.query("ville_deces == @ville_selected").groupby(["ville_deces"], as_index=False).agg(
+                {"lat": "mean", "lon": "mean", "nb_deces": "sum"}
+            )            
+        else:
+            #df_list = df_final.copy()
+            df_fnl_m = df_fnl.copy()
+            df_fnl_m.drop('ville_deces',  axis='columns', inplace=True)
+            df_fnl_m.insert(loc=15, column='ville_deces', value=cette_agglomeration)
+
+            df_map = df_final.query("ville_deces == @ville_selected").groupby(["ville_deces"], as_index=False).agg(
+                {"lat": "mean", "lon": "mean", "nb_deces": "sum"}
+            ) 
 
         hover_col = "ville_deces"
         size_col = "nb_deces"
@@ -607,13 +629,14 @@ if restitution_des_valeurs:
 
         origine_secteur = "origine_ville"
 
-        df_fnl_m = df_fnl.query("ville_deces == @ville_selected")
-
     elif departement_selected != "Tous les départements":
+        # conserver ces valeurs :
+        df_final_sav=df_final
+        df_fnl_sav= df_fnl
         # ➜ regroupement par ville
-        df_list = df_final.query("nom_departement_deces == @departement_selected")
+        #df_list = df_final.query("nom_departement_deces == @departement_selected")
         df_map = (
-            df_list.groupby(["nom_departement_deces", "ville_deces"])
+            df_final.query("nom_departement_deces == @departement_selected").groupby(["nom_departement_deces", "ville_deces"])
             .agg({"lat": "mean", "lon": "mean", "nb_deces": "sum"})
             .reset_index()
             .rename(columns={"nb_deces": "count"})
@@ -629,9 +652,9 @@ if restitution_des_valeurs:
 
     elif region_selected != "Toutes les régions":
         # ➜ regroupement par département
-        df_list = df_final.query("nom_region_deces == @region_selected")
+        #df_list = df_final.query("nom_region_deces == @region_selected")
         df_map = (
-            df_list.groupby(["nom_region_deces", "nom_departement_deces"])
+            df_final.query("nom_region_deces == @region_selected").groupby(["nom_region_deces", "nom_departement_deces"])
             .agg({"lat": "mean", "lon": "mean", "nb_deces": "sum"})
             .reset_index()
             .rename(columns={"nb_deces": "count"})
@@ -694,6 +717,7 @@ if restitution_des_valeurs:
             ]
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
 
+
     if current_filters != st.session_state.filters:
         st.session_state.filters = current_filters
         st.session_state.page = 0  # reset pagination
@@ -716,7 +740,7 @@ if restitution_des_valeurs:
 
     # -------------------------------------------------------------------------------------
     # PAGINATION
-    ce_graph_TAFV = graph_score(df_fnl, nom_secteur, origine_secteur)
+    ce_graph_TAFV = graph_score(df_fnl_m, nom_secteur, origine_secteur)
 
     # je fais apparaitre uniquement dans une vue nat, region ou departement
     if origine_secteur != "origine_ville":
@@ -925,11 +949,12 @@ if restitution_des_valeurs:
             st.caption("Distance med.* = Distance médiane ")
 
         # RESTITUTION DES GRAPHES
+        # instanciation faite précedemment
         fig_score, message_score, df_score = ce_graph_TAFV.render_graph_score(
             page=st.session_state.page
         )
         # Instancie la classe
-        ce_graph_TAFV_age = graph_score_age(df_fnl, nom_secteur, origine_secteur)
+        ce_graph_TAFV_age = graph_score_age(df_fnl_m, nom_secteur, origine_secteur)
 
         fig_score_age = ce_graph_TAFV_age.render_graph_score_age(
             page=st.session_state.page
@@ -941,7 +966,7 @@ if restitution_des_valeurs:
 
         # Instancie la classe
         ce_graph_IMD = graph_score(
-            df_fnl,
+            df_fnl_m,
             nom_secteur,
             origine_secteur,
             st.session_state.ecart_type_national.loc[0],
@@ -956,7 +981,7 @@ if restitution_des_valeurs:
 
         # Instancie la classe
         ce_graph_IMD_age = graph_score_age(
-            df_fnl,
+            df_fnl_m,
             nom_secteur,
             origine_secteur,
             st.session_state.df_ecart_type_moy_age,
@@ -975,17 +1000,16 @@ if restitution_des_valeurs:
                     st.subheader("Taux d'attractivité de fin de vie")
                     col_ind_tafv, _ = st.columns(
                         [0.5, 0.5]
-                    )  # 0.6 car il n'accepte pas un cumul décimal (padding)
+                    )  #
                     col_ind_tafv.metric(
                         "TAFV", ind_atfv
-                    )  # , | TAFV * = Taux d'attractivité de fin de vie [0:1]
+                    )  # 
                     st.markdown(
                         """
                         <div style="background-color: #ADD8E6; ">
                         📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir,
                          au moment du décès, des personnes qui n'y sont pas nées. \n 
-                        <b></b>\n
-                          
+                        <b></b>\n                          
                         """,
                         unsafe_allow_html=True,
                     )

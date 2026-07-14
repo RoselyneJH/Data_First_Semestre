@@ -414,7 +414,7 @@ class ClsGraphScore:
                 ),
                 2,
             )
-            df_cette_ville["mobility"] = "Nationale"
+            df_cette_ville["mobility"] = "Internationale"
             df_cette_ville.loc[
                 (df_cette_ville["origine_ville"] == "O"), ["mobility"]
             ] = ["Urbaine"]
@@ -429,12 +429,22 @@ class ClsGraphScore:
                 & (df_cette_ville["origine_ville"] == "N"),
                 ["mobility"],
             ] = ["Régionale"]
+            df_cette_ville.loc[
+                (df_cette_ville["origine_nationale"] == "O")
+                & (df_cette_ville["origine_region"] == "N")
+                & (df_cette_ville["origine_departement"] == "N")
+                & (df_cette_ville["origine_ville"] == "N"),
+                ["mobility"],
+            ] = ["Nationale"]
 
             fig = px.scatter(
                 df_cette_ville,
                 y="IMD",
                 x="age",
                 color="mobility",
+                color_discrete_sequence= px.colors.qualitative.Vivid,#["red", "green", "blue", "goldenrod"],
+                #color_continuous_scale="Viridis"
+                category_orders={"mobility": ["Urbaine", "Départementale", "Régionale", "Nationale","Internationale"]},
             )
 
             fig.update_layout(
