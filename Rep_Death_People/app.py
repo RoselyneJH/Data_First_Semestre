@@ -139,7 +139,7 @@ def load_dataframe() -> pd.DataFrame:
         ]
     )
     df_grp = df_polars.to_pandas()
-
+    
     return df_grp, df
 
 
@@ -282,6 +282,23 @@ def statistique_sur_secteur(
 
     df_fnl_m = df_fnl_e.copy()
 
+    ordre= ["0-1", "1-20", "20-35", "35-50", "50-65", "65-90", "90+"]
+
+    # proportion des classes d'age
+    les_proportions = (
+        df_fnl_m["classe_age"]
+        .value_counts(normalize=True)
+        .mul(100)
+        .round(2)
+        .reset_index(name="pourcentage")
+    )
+
+    les_proportions["classe_age"] = les_proportions["classe_age"].cat.reorder_categories(
+        ordre,
+        ordered=True
+    )
+    les_proportions = les_proportions.sort_values("classe_age")
+
     # Preparation des indicateurs
     nb_originaire = df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"][
         cette_origine_secteur
@@ -321,13 +338,6 @@ def statistique_sur_secteur(
         round(df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"]["age"].mean(), 0)
     ).replace(".0", "")
 
-    # Pourcentage de femme
-    # pct_femme_e = str(round(df_fnl_m[(df_fnl_m[cette_origine_secteur] == 'N') & (df_fnl_m['sex'] == '2') ].shape[0],2))
-    # pct_homme_e = str(round(df_fnl_m[(df_fnl_m[cette_origine_secteur] == 'N') & (df_fnl_m['sex'] == '1') ].shape[0],2))
-
-    # pct_femme_o = str(round(df_fnl_m[(df_fnl_m[cette_origine_secteur] == 'O') & (df_fnl_m['sex'] == '2') ].shape[0],2))
-    # pct_homme_o = str(round(df_fnl_m[(df_fnl_m[cette_origine_secteur] == 'O') & (df_fnl_m['sex'] == '1') ].shape[0],2))
-
     stat_secteur["pct_originaire"] = pct_originaire
     stat_secteur["pct_exogene"] = pct_exogene
     stat_secteur["ind_TAFV"] = ind_TAFV
@@ -349,6 +359,7 @@ def statistique_sur_secteur(
         age_moy_exogene,
         distance_med_originaire,
         distance_med_exogene,
+        les_proportions,
     )
 
 
@@ -920,6 +931,7 @@ if restitution_des_valeurs:
                 moy_age_e,
                 dis_med_o,
                 dis_med_e,
+                les_proportions,
             ) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
             (
@@ -941,12 +953,18 @@ if restitution_des_valeurs:
 
             # calcul d'IMD
             ind_imd = round(
-                (distance_lng_sum_prc - st.session_state.moyenne_nationale.loc[0])
+                (st.session_state.moyenne_nationale.loc[0] - distance_lng_sum_prc)
                 / st.session_state.ecart_type_national.loc[0],
                 2,
             )
             #
             st.caption("Distance med.* = Distance médiane ")
+
+            col_1,col_2,col_3,col_4,col_5,col_6,col_7= st.columns([0.8, 0.8, 0.9, 0.9, 0.9, 0.9, 0.9])
+
+            #col_1.metric("je teste",les_proportions[les_proportions['classe_age'=='0-1']][0])
+            print(" les_proportions ",les_proportions[les_proportions['classe_age'=='0-1']])
+            
 
         # RESTITUTION DES GRAPHES
         # instanciation faite précedemment
@@ -1060,10 +1078,12 @@ if restitution_des_valeurs:
                         )
 
             with st.container(border=True):
-                # Préparation de l'alignement des graphes
+                # Préparation de l'alignement des graphes 
                 # Colonnes côte à côte
                 # Mettre un espace entre les différents conteneurs
-                col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9, 0.6, 4.7])
+                #col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9, 0.6, 4.7])
+
+                col_TAFV, col_separateur, col_IMD = st.columns([4.9, 0.6, 4.7])
                 with col_TAFV:
 
                     with st.container(border=True):
@@ -1110,6 +1130,46 @@ if restitution_des_valeurs:
                             st.plotly_chart(
                                 fig_score, width="stretch", key="Graphe_score"
                             )
+                
+                with col_IMD:
+                    with st.container(border=True):
+                        with st.popover("ℹ️ À propos de ce graphique"):
+                                    st.markdown(
+                                        """
+                                        <div style="background-color: #ADD8E6;
+                                            padding:12px;
+                                            border-radius:8px;
+                                            border-left:4px solid #1f77b4; ">
+                                        Le taux d'attractivité découpe le graphe en 3 zones : <br>
+                                        <b>-</b> Zone à forte présence d'exogènes dans ce secteur <br>
+                                        <b>-</b> Zone neutre <br>
+                                        <b>-</b> Zone à forte présence d'originaires dans ce secteur <br>
+                                        </div>
+                                        """,
+                                        unsafe_allow_html=True,
+                                    )
+                    
+                        
+                        (tab12I,) = st.tabs(["📊 Poids des secteurs"])
+                        with tab12I: #st.container(border=True):
+                            st.plotly_chart(
+                                fig_score_IMD,
+                                width="stretch",
+                                key="Graphe_IMD",
+                            )
+
+
+                # message de suppression d'éventuel secteur sans intéret
+                st.text(message_score)
+
+            with st.container(border=True):
+                # col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9,0.7,4.6])
+                #col_IMD, col_separateur, col_age_IMD = st.columns(
+                #    [4.9, 0.6, 4.7]
+                #) 
+                col_age_TAFV, col_separateur, col_age_IMD = st.columns(
+                    [4.9, 0.6, 4.7]
+                )
 
                 with col_age_TAFV:
                     with st.container(border=True):
@@ -1170,28 +1230,30 @@ if restitution_des_valeurs:
                                 width="stretch",
                                 key="Graphe_score_age",
                             )
-
-                # message de suppression d'éventuel secteur sans intéret
-                st.text(message_score)
-
-            with st.container(border=True):
-                # col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9,0.7,4.6])
-                col_IMD, col_separateur, col_age_IMD = st.columns(
-                    [4.9, 0.6, 4.7]
-                )  # st.columns([5.4,0.1,4.6])
-
-                with col_IMD:
-                    with st.container(border=True):
-                        st.plotly_chart(
-                            fig_score_IMD,
-                            width="stretch",
-                            key="Graphe_IMD",
-                        )
-
+ 
                 with col_age_IMD:
                     with st.container(border=True):
-                        st.plotly_chart(
-                            fig_score_IMD_age,
-                            width="stretch",
-                            key="Graphe_age_IMD",
-                        )
+                        with st.popover("ℹ️ À propos de ce graphique"):
+                                        st.markdown(
+                                            """
+                                            <div style="background-color: #ADD8E6;
+                                                padding:12px;
+                                                border-radius:8px;
+                                                border-left:4px solid #1f77b4; ">
+                                            Le taux d'attractivité découpe le graphe en 3 zones : <br>
+                                            <b>-</b> Zone à forte présence d'exogènes dans ce secteur <br>
+                                            <b>-</b> Zone neutre <br>
+                                            <b>-</b> Zone à forte présence d'originaires dans ce secteur <br>
+                                            </div>
+                                            """,
+                                            unsafe_allow_html=True,
+                                        )
+                        
+                            
+                        (tab12I,) = st.tabs(["📊 Poids des secteurs"])
+                        with tab12I: #
+                            st.plotly_chart(
+                                fig_score_IMD_age,
+                                width="stretch",
+                                key="Graphe_age_IMD",
+                            )

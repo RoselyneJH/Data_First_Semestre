@@ -81,53 +81,6 @@ def gestion_path_ini() -> str:
     return racine_projet, log_path, base_dir
 
 
-def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
-    """
-    Args:
-
-        Le contenu du site
-
-    Returns:
-
-        Le dataframe contenant les noms de fichier à periodicité annuelle et leur url de téléchargement
-
-    """
-    # Étape 1 : Item à chercher
-    item_dece = "/deces-"
-    item_file = "https://static.data.gouv.fr/resources/fichier-des-personnes-decedees/"
-    # Étape 2 : Récupérer les noms fichier et urls correspondant
-    links_url = []
-    links_file_name = []
-    # links_periodicite_non_annuel = []
-
-    for line in html_text.splitlines():  # html_text
-        if item_file in line and item_dece in line:
-            # motif=re.escape(item_dece)
-            # Recherche de toutes les occurrences avec leurs indices pour reconstruire le
-            for match in re.finditer(item_file, line):
-                start = match.start()
-                pos_buttee = line.find('.txt","', match.start())
-                url_file = line[start : pos_buttee + 4]
-
-                if len(url_file) < 150:
-                    # print(" File ",url_file)
-                    name_file = url_file[
-                        url_file.find(item_dece, 1)
-                        + len(item_dece) : url_file.find(".txt", 1)
-                    ]
-                    if (
-                        len(name_file) == 4
-                    ):  # uniquement ls années qui nous interessent !
-                        links_url.append(url_file)
-                        links_file_name.append(name_file)
-
-                    # Création du DataFrame
-    df = pd.DataFrame({"annee_file": links_file_name, "url_file": links_url})
-    df["url_file"] = df["url_file"].str.strip()
-    df["name_file"] = df["annee_file"].str.strip()
-    return df
-
-
 def selection_file_deces_annee(df: pd.DataFrame, annee: str) -> str:
     """
     Args:
@@ -310,7 +263,7 @@ def parsing_file(le_df_mal_formate: pd.DataFrame) -> List[Dict]:
     return raw_data
 
 
-def traitement_validation(chemin_w: str, an: str) -> Tuple:
+def traitement_validation(chemin_w: str, an: str, nom_fichier:str) -> Tuple:
     """
     Lecture du fichier fichier_deces.txt
 
@@ -328,6 +281,8 @@ def traitement_validation(chemin_w: str, an: str) -> Tuple:
 
         année selectionnée
 
+        nom_fichier
+
     Return:
 
         DataFrame corrigé + les erreurs de validaton
@@ -335,16 +290,21 @@ def traitement_validation(chemin_w: str, an: str) -> Tuple:
     """
     # Reconstitution des colonnes et creation du Dataframe de l'année selectionnée :
     start = time.time()
-
-    fichier_complet = os.path.join(chemin_w, "fichier_deces.txt")
-    # print("-------->  chemin_w", fichier_complet)
+     
+    fichier_complet = os.path.join(PATH_RACINE, nom_fichier)
 
     # Ouverture du fichier  attention, il faut choisir un encoding latin1, pas de separateur car certains
     # fichiers comportent plusieurs virgules et/ou tabulations + un warn sur les lignes incorrectes
-    le_df_mal_formate = pd.read_csv(
-        fichier_complet, on_bad_lines="warn", header=None, encoding="latin1"
+    #le_df_mal_formate = pd.read_csv(
+    #    fichier_complet, on_bad_lines="warn", header=None, encoding="latin1"
+    #)
+    
+    le_df_mal_formate =pd.read_fwf(
+        fichier_complet,
+        header=None,
+        widths=[200],   # une seule colonne contenant toute la ligne
+        encoding="latin1"
     )
-
     # Creation Dataframe final, declaration des colonnes :
     df = pd.DataFrame(
         columns=[
@@ -800,7 +760,56 @@ def incoherence_attribution_ville_pays_naissance(
 
     return df_clean
 
+def recuperer_df_name_and_url()-> pd.DataFrame:
+    url_api = "https://www.data.gouv.fr/api/1/datasets/fichier-des-personnes-decedees/"
+    
+    response = requests.get(url_api, timeout=30)
+    response.raise_for_status()
+    
+    dataset = response.json()
+    
+    links_url = []
+    links_file_name = []
+    links_nom_fichier = []  
+    
+    for resource in dataset["resources"]:
+    
+        # nom du fichier
+        title = resource.get("title", "")
+    
+        match = re.fullmatch(r"deces-(\d{4})\.txt", title)
+    
+        if match:
+    
+            # On privilégie l'URL directe si elle existe
+            url_file = (
+                resource.get("latest")
+                or resource.get("url")
+                or ""
+            )
+    
+            links_file_name.append(match.group(1))
+            links_url.append(url_file)
+            links_nom_fichier.append(title)   
+    
+    df = pd.DataFrame(
+        {
+            "annee_file": links_file_name,
+            "nom_fichier": links_nom_fichier,
+            "url_file": links_url,
+        }
+    )
+    
+    df["annee_file"] = df["annee_file"].astype(int)
+    
+    df = (
+        df.sort_values("annee_file")
+          .drop_duplicates(subset="annee_file")
+          .reset_index(drop=True)
+    )
+    return df
 
+'''
 def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
     """
     Permet de recupere la liste de tous les fichiers de deces depuis les années 1980
@@ -820,7 +829,7 @@ def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
     # Étape 2 : Récupérer les noms fichier et urls correspondant
     links_url = []
     links_file_name = []
-
+    
     for line in html_text.splitlines():  # html_text
         if item_file in line and item_dece in line:
             # motif=re.escape(item_dece)
@@ -845,13 +854,14 @@ def recuperer_df_name_and_url(html_text: str) -> pd.DataFrame:
 
                     # Création du DataFrame
     df = pd.DataFrame({"annee_file": links_file_name, "url_file": links_url})
+    print("test 1",links_file_name,"links_url",links_url)
     df["url_file"] = df["url_file"].str.strip()
     df["annee_file"] = df["annee_file"].str.strip()
 
     return df
 
 
-'''
+
 def creation_de_chaine_de_connexion(chemin_w: str) -> str:
     """
     Creation de la chaine de connexion
@@ -899,17 +909,14 @@ def get_row_with_fallback(engine: Engine, an: str) -> pd.DataFrame:
     """
     AN_PAR_DEFAUT = "2024"
 
-    LA_QUERY_S = "SELECT annee_file, url_file FROM nom_url"
+    LA_QUERY_S = "SELECT annee_file, url_file, nom_fichier FROM nom_url"
 
     for current_an in (an, AN_PAR_DEFAUT):
         la_query = LA_QUERY_S + " where annee_file='" + current_an + "' "
-        # print("la_query",la_query)
         with engine.connect() as connection:
             result = connection.execute(text(la_query))
             row = result.fetchone()
-            # print("row",row)
             if row is not None:
-                # print("trouve",type(row))
                 return pd.DataFrame([row], columns=result.keys()), current_an
     return None, an
 
@@ -937,7 +944,7 @@ def select_query_annee(url_Bdd: str, an: str = "") -> pd.DataFrame:
     #
     # with engine.connect() as conn:
     df, an = get_row_with_fallback(engine, an)
-
+     
     engine.dispose()
 
     return df, an
@@ -974,36 +981,37 @@ def telechargement_fichier_personne_decedee_selon_annee(
 
     """
     # Download file
-    les_urls, an = select_query_annee(url_Bdd, an)
-
-    resultat = les_urls.loc[les_urls["annee_file"] == an, "url_file"]
+    cette_url, an = select_query_annee(url_Bdd, an)
+     
+    #resultat = les_urls.loc[les_urls["annee_file"] == an, "url_file"]
 
     # Plusieurs lignes possibles ou pas :
-    if resultat.empty:
-        print("Aucune valeur trouvée pour l'annee", an, "; Selection de l'année 2024")
-        resultat = les_urls.loc[les_urls["annee_file"] == "2024", "url_file"]
-    elif len(resultat) > 1:
-        print(
-            "Plusieurs valeurs trouvées pour l'annee ",
-            an,
-            "; Selection de l'année 2024",
-        )
-        resultat = les_urls.loc[les_urls["annee_file"] == "2024", "url_file"]
+    #if resultat.empty:
+    #    print("Aucune valeur trouvée pour l'annee", an, "; Selection de l'année 2024")
+    #    resultat = les_urls.loc[les_urls["annee_file"] == "2024", "url_file"]
+    #elif len(resultat) > 1:
+    #    print(
+    #        "Plusieurs valeurs trouvées pour l'annee ",
+    #        an,
+    #        "; Selection de l'année ",
+    #    )
+    #    resultat = les_urls.loc[les_urls["annee_file"] == "2024", "url_file"]
 
-    url = resultat.values[0]
+    #url = resultat.values[0]
 
     try:
-        response = requests.get(url)
+        response = requests.get(cette_url['url_file'][0])
         response.raise_for_status()  # Vérifie si la réponse est OK (code 200)
-        # print("--------> avant open fichier", an)
+        
+        nom_fichier_telecharge=cette_url['nom_fichier'][0]
         # Sauvegarder le fichier si la requête est réussie
-        with open("fichier_deces.txt", "wb") as f:
+        with open(nom_fichier_telecharge, "wb") as f:
             f.write(response.content)
 
         print("Fichier téléchargé avec succès.")
         logger.info(f"Fichier ({an}) téléchargé avec succès.")
-        # print("---------> fichier base", base_dir)
-        df, errors = traitement_validation(base_dir, an)
+       
+        df, errors = traitement_validation(base_dir, an, nom_fichier_telecharge)
 
         df_clean = verification_date(df, an)
         df_clean = incoherence_attribution_ville_pays_naissance(df_clean)
@@ -1013,7 +1021,7 @@ def telechargement_fichier_personne_decedee_selon_annee(
             (df_clean["date_deces_dt"] - df_clean["date_naissance_dt"]) // 365
         ).dt.days.astype(int)
 
-        # attention il faut que l'age < 0 !
+        # attention il faut que l'age > 0 !
         df_clean["age"] = df_clean["age"].apply(lambda x: x if x > 0 else 0)
 
         # ajout de la colonne :
@@ -1022,6 +1030,8 @@ def telechargement_fichier_personne_decedee_selon_annee(
         seuil = int(s_padded)
         df_clean["idligne"] = df_clean["id_index"] + seuil
         df_clean["annee"] = an  # J'affecte la même année pour ces données
+        # par défaut :
+        df_clean["pays_deces"] = 'FRANCE'
         df_clean["ville_deces"] = ""
         df_clean = df_clean[
             [
@@ -1038,11 +1048,12 @@ def telechargement_fichier_personne_decedee_selon_annee(
                 "ville_deces",
                 "age",
                 "annee",
+                "pays_deces",
             ]
         ]
 
         # on peut le supprimer
-        os.remove("fichier_deces.txt")
+        os.remove(nom_fichier_telecharge)
 
     except requests.exceptions.HTTPError as errh:
         print(f" Erreur HTTP : {errh}")
@@ -1107,6 +1118,7 @@ def creer_base_et_table_personne_decedee(
         ville_deces = Column(String)
         age = Column(Integer)
         annee = Column(String)
+        pays_deces = Column(String)
 
         def __repr__(self):
             return f"<death_people(id={self.idligne}, nom='{self.nom}')>"
@@ -1214,13 +1226,13 @@ def creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd: str) -> None:
     )
     response = requests.get(URL_PERSONNE_DECEDEE)
     html_text = response.text
-    df_url_a_copier = recuperer_df_name_and_url(html_text)
+    df_url_a_copier = recuperer_df_name_and_url() # (html_text)
 
     df_url_a_copier["idligne"] = df_url_a_copier.index.to_list()
-    df_url = df_url_a_copier[["idligne", "annee_file", "url_file"]].copy()
+    df_url = df_url_a_copier[["idligne", "annee_file", "url_file","nom_fichier"]].copy()
 
     # -------------- 2. Chargement des données en Bdd   ---------------------------
-
+    
     # Créer le moteur SQLAlchemy
     engine = create_engine(url_Bdd)
 
@@ -1234,6 +1246,7 @@ def creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd: str) -> None:
         Column("idligne", Integer, primary_key=True),
         Column("annee_file", String, nullable=False),
         Column("url_file", String, nullable=False),
+        Column("nom_fichier", String, nullable=False),
     )
 
     # Supprimer l’ancienne table si elle existe
@@ -1307,7 +1320,7 @@ if __name__ == "__main__":
         )
         #
         logger.info("DEBUT TRT")
-
+         
         creation_bdd_dictionnaire_fichiers_personne_decedee(url_Bdd)
 
         """
@@ -1377,7 +1390,7 @@ if __name__ == "__main__":
     # ---- 3. Lecture de la Bdd puis recuperation du fichier deces pour parsing --
 
     an = "2024"
-
+     
     # Telechargement du fichier :
     df_clean = telechargement_fichier_personne_decedee_selon_annee(
         url_Bdd, BASE_DIR, an
@@ -1407,6 +1420,7 @@ if __name__ == "__main__":
         ville_deces = Column(String)
         age = Column(Integer)
         annee = Column(String)
+        pays_deces=Column(String)
 
     ma_requete_suppression = "DROP TABLE IF EXISTS death_people CASCADE;"
     # Supprimer l’ancienne table si elle existe

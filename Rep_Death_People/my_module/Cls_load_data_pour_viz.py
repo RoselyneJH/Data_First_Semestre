@@ -143,7 +143,7 @@ class ClsLoadDataPourViz:
             nb_deces=("idligne", "count"),
             distance_tot=("distance", lambda x: round(x.sum(), 1)),
         )
-        # Recuperation du nombre de mort origianire de cette ville
+        # Recuperation du nombre de mort originaire de cette ville
         df_clean_nb_ville_origine = (
             df_clean.query("origine_ville == 'O'")
             .groupby(["annee", "num_insee_deces"], as_index=False)
@@ -288,8 +288,8 @@ class ClsLoadDataPourViz:
         df_clean = df[
             df["latitude_naissance"].notna()
             & df["latitude_deces"].notna()
-            & df["code_departement_naissance"].notna()
-            & df["code_departement_deces"].notna()
+            #& df["code_departement_naissance"].notna() # Je vais conserver ces enregistrements
+            #& df["code_departement_deces"].notna()     # Je vais conserver ces enregistrements
         ].copy()
 
         # respect du format
@@ -335,8 +335,8 @@ class ClsLoadDataPourViz:
         return None
 
     def ExtractionDataTableDeathPeopleView(self) -> pd.DataFrame:
-        
-        la_query = "SELECT idligne, prenom,sex,date_naissance_dt,num_insee_naissance,"
+        la_query = "SELECT hors_france.nb_deces,maitre.* FROM ("
+        la_query = la_query + "SELECT idligne, prenom,sex,date_naissance_dt,num_insee_naissance,"
         la_query = la_query + "ville_naissance,pays_naissance,latitude_naissance,"
         la_query = la_query + "longitude_naissance,code_departement_naissance,"
         la_query = la_query + "nom_departement_naissance, code_region_naissance,"
@@ -345,7 +345,10 @@ class ClsLoadDataPourViz:
         la_query = la_query + "code_departement_deces,nom_departement_deces,"
         la_query = la_query + "code_region_deces,nom_region_deces,age,annee,"
         la_query = la_query + "origine_ville, origine_departement,"
-        la_query = la_query + "origine_region FROM death_people_view"
+        la_query = la_query + "origine_region FROM death_people_view WHERE pays_deces in ('FRANCE','MONACO')"
+        la_query = la_query + ") maitre, (SELECT count(*) as nb_deces FROM death_people_view "
+        la_query = la_query + "WHERE pays_deces <> 'FRANCE' or "
+        la_query = la_query + "pays_deces is null) hors_france"
 
         df_polars = self.select_with_polars(self.url_Bdd, la_query)
 

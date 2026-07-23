@@ -46,7 +46,7 @@ af.code_region_naissance,coalesce(af.nom_region_naissance,de.pays_naissance) as 
 ,de.date_deces_dt,af.num_insee_deces ,af.ville_deces
 ,af.latitude_deces,af.longitude_deces,af.code_departement_deces,af.nom_departement_deces,
 af.code_region_deces,af.nom_region_deces,de.age,de.annee,origine_ville,origine_departement,
-origine_region
+origine_region, case when SUBSTR(af.num_insee_deces, 1, 2) <> '99' then 'FRANCE' ELSE af.nom_region_deces end as pays_deces
 from affectation_insee_site_naissance_death af
 inner join death_people de on (de.idligne=af.idligne))	
 ;
