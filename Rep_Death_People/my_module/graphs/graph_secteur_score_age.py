@@ -38,6 +38,9 @@ class ClsGraphScoreAge:
         self.nom_secteur = nom_secteur
         self.origine_secteur = origine_secteur
         self.le_df_ecart_type_moy_age = le_df_ecart_type_moy_age
+        # Comme le dataframe est ecourté la position de cette colonne
+        # change :
+        self.pos_col_ville_deces =self.df_fnl.columns.get_loc("ville_deces")
 
         self.distance_nat_inf = 0
         self.distance_dep_inf = distance_dep_inf  # 200
@@ -165,7 +168,7 @@ class ClsGraphScoreAge:
                 margin=dict(
                     t=80, b=50, l=50, r=50
                 ),  # permet d'avoir même hauteur de graphe
-                title_x=0.2,  # centre le titre du graphique
+                title_x=0.35,  # centre le titre du graphique
             )
 
             # permet d'afficher le rang des cellules
@@ -226,9 +229,6 @@ class ClsGraphScoreAge:
             )
             return fig  # , self.class_filtrage.liste_des_df_secteur[page]
         else:
-            if secteurs_originaires:
-                print("self.df_fnl  >> ", self.df_fnl.info())
-
             palette_originaire = [
                 "#FFFDE7",
                 "#FFF59D",
@@ -250,7 +250,7 @@ class ClsGraphScoreAge:
                 "#5A8FD8",  # bleu un peu plus soutenu
             ]
 
-            la_ville = self.df_fnl.iloc[0, 15]
+            la_ville = self.df_fnl.iloc[0, self.pos_col_ville_deces]
             liste_dep = self.class_filtrage.preparation_treemap(self.df_fnl, la_ville)
 
             df_top = liste_dep.copy()
@@ -270,6 +270,10 @@ class ClsGraphScoreAge:
                 )
                 secteur_naissance = "nom_departement_naissance"
                 palette = palette_exogene
+                
+                df_merge = df_cette_ville.merge(
+                df_top, left_on=secteur_naissance, right_on="origine", how="left"
+                )
             else:
                 # tri des departements pour originaires
                 df_top_ordre = (
@@ -284,10 +288,12 @@ class ClsGraphScoreAge:
                     secteur_naissance = "ville_naissance"
                 
                 palette = palette_originaire
+                
+                df_merge = df_cette_ville.merge(
+                df_top.query("origine==@la_ville"), left_on=secteur_naissance, right_on="origine", how="left"
+                )
 
-            df_merge = df_cette_ville.merge(
-                df_top, left_on=secteur_naissance, right_on="origine", how="left"
-            )
+
             df_merge["top_dep"] = df_merge["top_dep"].fillna("N")
             df_merge_st_top = (
                 df_merge.query("top_dep =='O' ")
@@ -296,7 +302,7 @@ class ClsGraphScoreAge:
                 )
                 .agg(nb=("idligne", "count"))
             )
-            print("df_merge_st_top >",secteur_naissance,"-",df_merge_st_top)
+            
             fig = px.bar(
                 df_merge_st_top,
                 x=secteur_naissance,
@@ -338,10 +344,10 @@ class ClsGraphScoreAge:
                 )
             # preparation du titre du graphe
             if secteurs_originaires:
-                le_titre = f"Ages des défunts à {self.df_fnl.iloc[0,15]}"
+                le_titre = f"Ages des défunts à {self.df_fnl.iloc[0,self.pos_col_ville_deces]}"
             else:
                 le_titre = (
-                    f"Origine et âges des défunts exogènes à {self.df_fnl.iloc[0,15]}"
+                    f"Origine et âges des défunts exogènes à {self.df_fnl.iloc[0,self.pos_col_ville_deces]}"
                 )
 
             fig.update_layout(
@@ -434,7 +440,7 @@ class ClsGraphScoreAge:
             # colorbar
             fig.update_coloraxes(
                 colorbar=dict(
-                    tickvals=[-9, 0, 5], ticktext=["Mobilité", "Neutre", "Ancrage"]
+                    tickvals=[-9, 0, 5], ticktext=["Mobilité", "Neutre", "Inertie"]
                 )
             )
             # les couleurs
@@ -447,7 +453,7 @@ class ClsGraphScoreAge:
                 margin=dict(
                     t=80, b=50, l=50, r=50
                 ),  # permet d'avoir même hauteur de graphe
-                title_x=0.2,  # centre le titre du graphique
+                title_x=0.45,  # centre le titre du graphique
             )
 
             # permet d'afficher le rang des cellules
@@ -480,8 +486,8 @@ class ClsGraphScoreAge:
             # Performance des classes et secteurs
             couleur = (
                 "#AEA222" if secteurs_originaires else "purple"
-            )  # 1 #FBFFCD #696D44 #696E3B
-            # #938C4E
+            )  #
+            # 
             # Meilleur classe :
             fig.update_xaxes(
                 tickvals=ordre_filtre,
@@ -529,7 +535,7 @@ class ClsGraphScoreAge:
                 "#5A8FD8",  # bleu un peu plus soutenu
             ]
 
-            la_ville = self.df_fnl.iloc[0, 15]
+            la_ville = self.df_fnl.iloc[0, self.pos_col_ville_deces]
             liste_dep = self.class_filtrage.preparation_treemap(self.df_fnl, la_ville)
 
             df_top = liste_dep.copy()
@@ -620,7 +626,7 @@ class ClsGraphScoreAge:
                     font=dict(size=19, color="blue"),
                 )
             # preparation du titre du graphe
-            le_titre = f"Quelle est la mobilité sectorielle des défunts à {self.df_fnl.iloc[0,15]}"
+            le_titre = f"Quelle est la mobilité sectorielle des défunts à {self.df_fnl.iloc[0,self.pos_col_ville_deces]}"
 
             fig.update_layout(
                 title=le_titre,

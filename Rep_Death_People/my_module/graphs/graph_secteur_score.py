@@ -38,6 +38,9 @@ class ClsGraphScore:
         self.origine_secteur = origine_secteur
         self.ecart_type_national = ecart_type_national
         self.moyenne_nationale = moyenne_nationale
+        # Comme le dataframe est ecourté la position de cette colonne
+        # change :
+        self.pos_col_ville_deces =self.df_fnl.columns.get_loc("ville_deces")
 
         self.class_filtrage = ClsScorePourViz(
             self.df_fnl,
@@ -171,7 +174,7 @@ class ClsGraphScore:
                     margin=dict(
                         t=80, b=50, l=50, r=50
                     ),  # permet d'avoir même hauteur de graphe
-                    title_x=0.2,  # centre le titre du graphique
+                    title_x=0.28,  # centre le titre du graphique
                 )
 
                 return fig, texte_sur_secteur_sans_deces_originaire, df_score
@@ -254,8 +257,9 @@ class ClsGraphScore:
                 return fig, texte_sur_secteur_sans_deces_originaire, self.df_score
 
         else:
+            
             df_plot = self.class_filtrage.preparation_treemap(
-                self.df_fnl, self.df_fnl.iloc[0, 15]
+                self.df_fnl, self.df_fnl.iloc[0, self.pos_col_ville_deces]
             )
             # 7️⃣ Treemap
             fig = px.treemap(
@@ -271,7 +275,7 @@ class ClsGraphScore:
             fig.update_traces(textinfo="label+percent entry")
 
             fig.update_layout(
-                title=f"D'ou viennent les défunts du secteur {self.df_fnl.iloc[0,15]} ? <br>Quelles sont les proportions ? <br>",
+                title=f"D'ou viennent les défunts du secteur {self.df_fnl.iloc[0,self.pos_col_ville_deces]} ? <br>Quelles sont les proportions ? <br>",
                 paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
                 height=height_val,
                 width=400,
@@ -297,7 +301,7 @@ class ClsGraphScore:
         height_val = 580
         texte_sur_secteur_sans_deces_originaire = ""
         if indicateur == "IMD":
-            le_titre = "Mobilité différentielle (IMD)"  # "Répartition de l'"+indicateur+" par zone géographique"
+            le_titre = "Mobilité différentielle (IMD)"  #  
 
         # graphe :
         # Alors secteur différent d'une ville ou bien departement = region (df_score=1)
@@ -372,7 +376,7 @@ class ClsGraphScore:
                     xref="x",
                     yref="y",
                     showarrow=False,
-                    text="Ancrage",
+                    text="Inertie",
                     font=dict(size=12, color="blue"),
                 )
                 # Annotation pour identifier la tendance de cette zone
@@ -389,7 +393,7 @@ class ClsGraphScore:
                 fig.add_vline(x=-0, line_dash="dash", line_color="white")
                 fig.update_layout(
                     xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
-                    title=le_titre,  # "Répartition du TAFV par zone géographique",
+                    title=le_titre,  # "Mobilité différentielle (IMD)"
                     showlegend=False,  # desactive la legende pour les 2 add_scatter
                     xaxis_title=indicateur,
                     yaxis_title="Secteur",
@@ -399,21 +403,23 @@ class ClsGraphScore:
                     margin=dict(
                         t=80, b=50, l=50, r=50
                     ),  # permet d'avoir même hauteur de graphe
-                    title_x=0.2,  # centre le titre du graphique
+                    title_x=0.4,  # centre le titre du graphique
                 )
                 return fig, texte_sur_secteur_sans_deces_originaire, df_score
 
         else:
-            # creation de la colonne mobility
+            # 
             df_cette_ville = self.df_fnl.copy()
             df_cette_ville["distance_log"] = np.log1p(df_cette_ville["distance"])
             df_cette_ville["IMD"] = round(
                 (
-                    (self.ecart_type_national - df_cette_ville["distance_log"])
+                    (self.moyenne_nationale - df_cette_ville["distance_log"])
                     / self.ecart_type_national
                 ),
                 2,
             )
+
+            # creation de la colonne mobility
             df_cette_ville["mobility"] = "Internationale"
             df_cette_ville.loc[
                 (df_cette_ville["origine_ville"] == "O"), ["mobility"]
@@ -442,13 +448,12 @@ class ClsGraphScore:
                 y="IMD",
                 x="age",
                 color="mobility",
-                color_discrete_sequence= px.colors.qualitative.Vivid,#["red", "green", "blue", "goldenrod"],
-                #color_continuous_scale="Viridis"
+                color_discrete_sequence= px.colors.qualitative.Vivid,# 
                 category_orders={"mobility": ["Urbaine", "Départementale", "Régionale", "Nationale","Internationale"]},
             )
 
             fig.update_layout(
-                title=f"D'ou viennent les défunts du secteur {self.df_fnl.iloc[0,15]} ? <br>Quelles sont les proportions ? <br>",
+                title=f"D'ou viennent les défunts du secteur {self.df_fnl.iloc[0,self.pos_col_ville_deces]} ? <br>Quelles sont les proportions ? <br>",
                 paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
                 height=height_val,
                 width=400,

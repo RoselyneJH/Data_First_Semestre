@@ -335,7 +335,7 @@ class ClsLoadDataPourViz:
         return None
 
     def ExtractionDataTableDeathPeopleView(self) -> pd.DataFrame:
-        la_query = "SELECT hors_france.nb_deces,maitre.* FROM ("
+        la_query = "SELECT hors_france.nb_deces as nb_hors_france,maitre.* FROM ("
         la_query = la_query + "SELECT idligne, prenom,sex,date_naissance_dt,num_insee_naissance,"
         la_query = la_query + "ville_naissance,pays_naissance,latitude_naissance,"
         la_query = la_query + "longitude_naissance,code_departement_naissance,"

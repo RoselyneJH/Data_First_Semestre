@@ -109,6 +109,9 @@ def load_dataframe() -> pd.DataFrame:
     )
 
     df = my_class.creation_classe_age(df_person_nais_dece_departement_region)
+    
+    # Nombre de Deces hors france :
+    nb_deces_hors_france = df['nb_hors_france'].mean()
 
     # toutes ces personnes sont mortes en France :
     df['pays_deces'] ='FRANCE' # cela permet d'ajuster la hierarchie des secteurs de deces
@@ -373,6 +376,9 @@ df_grp, df = load_dataframe()
 BASE_DIR = Path(__file__).resolve().parent
 image_path_men = BASE_DIR / "assets" / "men.svg"
 image_path_women = BASE_DIR / "assets" / "women.svg"
+image_path_carte = BASE_DIR / "assets" / "France.svg"
+image_path_pourcentage = BASE_DIR / "assets" / "Pourcentage.svg"
+image_path_paysage = BASE_DIR / "assets" / "Paysage.svg"
 
 # Le titre
 st.title("Dynamiques et attractivités des territoires ")
@@ -486,19 +492,19 @@ with st.sidebar:
     agglomeration = False # la case à cocher "agglomeration" est non cochée [init]
     
     # boolean sur type de ville standard =(paris 6 ieme, Bordeaux, valencienne, St denis...) ou agglomération (PARIS, LYON, MARSEILLE)
-    ville_standard = True # Est ce une ville standard ? on initalise à oui [init]
+    est_ville_standard = True # Est ce une ville standard ? on initalise à oui [init]
 
     if (
         ville_selected.startswith("PARIS")
         or ville_selected.startswith("MARSEILLE")
         or ville_selected.startswith("LYON")
     ):
-        ville_standard = False
+        est_ville_standard = False
         cette_agglomeration = ville_selected.split()[0]
         le_libelle_agg = "Agglomération de " + cette_agglomeration
 
-    if (not ville_standard) & (not ville_selected == "Toutes les villes"):
-        agglomeration = st.checkbox(label=le_libelle_agg, disabled=ville_standard, 
+    if (not est_ville_standard) & (not ville_selected == "Toutes les villes"):
+        agglomeration = st.checkbox(label=le_libelle_agg, disabled=est_ville_standard, 
         help ="Regrouper les résultats de l'agglomération")
 
 
@@ -513,8 +519,12 @@ else:
     df_final_ = df_dept[df_dept["ville_deces"] == ville_selected]
     df_fnl_ = df_dpt[df_dpt["ville_deces"] == ville_selected]
 
+
+
 # Selection des sexes
 with st.sidebar:
+    st.divider() # séparation
+
     choix_genre = st.radio(
         "Genre :",
         ["Tout", "H", "F"],
@@ -533,6 +543,9 @@ elif choix_genre == "F":
 else:
     df_final_f = df_final_.copy()
     df_fnl_f = df_fnl_.copy()
+
+with st.sidebar:
+    st.divider() # séparation
 
 # Slider
 start, end = st.sidebar.slider(
@@ -616,15 +629,14 @@ if restitution_des_valeurs:
     if ville_selected != "Toutes les villes":
         
         if not agglomeration:
-            #df_list = df_final.query("ville_deces == @ville_selected")
+
             df_fnl_m = df_fnl.query("ville_deces == @ville_selected")
-            
+
             # ➜ chaque ligne renvoie un cumul de personnes decedées
             df_map = df_final.query("ville_deces == @ville_selected").groupby(["ville_deces"], as_index=False).agg(
                 {"lat": "mean", "lon": "mean", "nb_deces": "sum"}
             )            
         else:
-            #df_list = df_final.copy()
             df_fnl_m = df_fnl.copy()
             df_fnl_m.drop('ville_deces',  axis='columns', inplace=True)
             df_fnl_m.insert(loc=15, column='ville_deces', value=cette_agglomeration)
@@ -751,6 +763,7 @@ if restitution_des_valeurs:
 
     # -------------------------------------------------------------------------------------
     # PAGINATION
+
     ce_graph_TAFV = graph_score(df_fnl_m, nom_secteur, origine_secteur)
 
     # je fais apparaitre uniquement dans une vue nat, region ou departement
@@ -897,12 +910,10 @@ if restitution_des_valeurs:
             col_age.metric("Âge moy.", f"{age_moyen} ans")
             # Affichage des icônes SVG dans la colonne `col_sex`
             with col_sex:
-                sex = "homme"  # Exemple: ici, tu pourrais avoir une condition qui choisit entre "homme" ou "femme"
+                sex = "homme"  
 
                 if serie_sex[0] == "H":
-                    st.image(
-                        image_path_men, width=120
-                    )  # Affichage de l'icône homme <br>
+                    st.image(image_path_men, width=120 )  # Affichage de l'icône homme 
                 else:
                     st.image(image_path_women, width=120)  # Affichage de l'icône femme
 
@@ -935,14 +946,20 @@ if restitution_des_valeurs:
             ) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
             (
+                col_carte,    
                 col_pc_originaire,
                 col_pc_exogene,
                 col_moy_age_ori,
                 col_moy_age_exo,
                 col_dist_med_o,
                 col_dist_med_e,
-            ) = st.columns([0.8, 0.8, 0.9, 0.9, 0.9, 0.9])
+            ) = st.columns([1.0,0.8, 0.8, 0.9, 0.9, 0.9, 0.9])
 
+            with col_carte:
+                if origine_secteur == "origine_nationale":
+                    st.image(image_path_carte, width=120 )  # Affichage  
+                else:
+                    st.image(image_path_paysage, width=120 )  # Affichage 
             col_pc_originaire.metric("Originaire %", pc_o)
             col_pc_exogene.metric("Exogène %", pc_e)
 
@@ -960,11 +977,21 @@ if restitution_des_valeurs:
             #
             st.caption("Distance med.* = Distance médiane ")
 
-            col_1,col_2,col_3,col_4,col_5,col_6,col_7= st.columns([0.8, 0.8, 0.9, 0.9, 0.9, 0.9, 0.9])
+            with st.container(border=True):
+                st.subheader("Pourcentage des défunts par classes d'âge")
 
-            #col_1.metric("je teste",les_proportions[les_proportions['classe_age'=='0-1']][0])
-            print(" les_proportions ",les_proportions[les_proportions['classe_age'=='0-1']])
-            
+                col_img,col_1,col_2,col_3,col_4,col_5,col_6,col_7= st.columns([1.0,0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
+                
+                with col_img:
+                    st.image(image_path_pourcentage, width=120 )
+
+                col_1.metric(les_proportions.iloc[0,0] + " an",les_proportions.iloc[0,1])
+                col_2.metric(les_proportions.iloc[1,0] + " ans",les_proportions.iloc[1,1])
+                col_3.metric(les_proportions.iloc[2,0] + " ans",les_proportions.iloc[2,1])
+                col_4.metric(les_proportions.iloc[3,0] + " ans",les_proportions.iloc[3,1])
+                col_5.metric(les_proportions.iloc[4,0] + " ans",les_proportions.iloc[4,1])
+                col_6.metric(les_proportions.iloc[5,0] + " ans",les_proportions.iloc[5,1])
+                col_7.metric(les_proportions.iloc[6,0] + " ans",les_proportions.iloc[6,1])
 
         # RESTITUTION DES GRAPHES
         # instanciation faite précedemment
@@ -1069,7 +1096,7 @@ if restitution_des_valeurs:
                             border-left:4px solid #1f77b4; ">
                             <b>-</b> IMD < 0 le secteur a une mobilité plus importante que la moyenne nationale.
                             Cela correspond à des territoires de circulation.<br>
-                            <b>-</b> IMD = 0 Le secteur a une mobilité identique à celle du pays. <br>
+                            <b>-</b> IMD = 0 Le secteur a une mobilité identique à la moyenne du pays. <br>
                             <b>-</b> IMD > 0 le secteur a une mobilité plus faible que la moyenne nationale.
                             Cela peut refléter des territoires d'ancrage. <br>
                         </div>                
@@ -1140,10 +1167,9 @@ if restitution_des_valeurs:
                                             padding:12px;
                                             border-radius:8px;
                                             border-left:4px solid #1f77b4; ">
-                                        Le taux d'attractivité découpe le graphe en 3 zones : <br>
-                                        <b>-</b> Zone à forte présence d'exogènes dans ce secteur <br>
-                                        <b>-</b> Zone neutre <br>
-                                        <b>-</b> Zone à forte présence d'originaires dans ce secteur <br>
+                                        L'IMD découpe le graphe en 2 zones : <br>
+                                        <b>-</b> Zone à forte mobilité <br>
+                                        <b>-</b> Zone à forte inertie  <br>
                                         </div>
                                         """,
                                         unsafe_allow_html=True,
@@ -1151,7 +1177,7 @@ if restitution_des_valeurs:
                     
                         
                         (tab12I,) = st.tabs(["📊 Poids des secteurs"])
-                        with tab12I: #st.container(border=True):
+                        with tab12I: 
                             st.plotly_chart(
                                 fig_score_IMD,
                                 width="stretch",
