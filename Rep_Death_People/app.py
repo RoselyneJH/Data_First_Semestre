@@ -292,7 +292,7 @@ def statistique_sur_secteur(
         df_fnl_m["classe_age"]
         .value_counts(normalize=True)
         .mul(100)
-        .round(2)
+        .round(3)
         .reset_index(name="pourcentage")
     )
 
@@ -523,7 +523,8 @@ else:
 
 # Selection des sexes
 with st.sidebar:
-    st.divider() # séparation
+    # séparation
+    st.write("-------------------------")
 
     choix_genre = st.radio(
         "Genre :",
@@ -544,8 +545,6 @@ else:
     df_final_f = df_final_.copy()
     df_fnl_f = df_fnl_.copy()
 
-with st.sidebar:
-    st.divider() # séparation
 
 # Slider
 start, end = st.sidebar.slider(
@@ -721,6 +720,18 @@ if restitution_des_valeurs:
         end,
     )
 
+    (
+        pc_o,
+        pc_e,
+        ind_atfv,
+        distance_lng_sum_prc,
+        moy_age_o,
+        moy_age_e,
+        dis_med_o,
+        dis_med_e,
+        les_proportions,
+    ) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
+
     if "filters" not in st.session_state:
         st.session_state.filters = current_filters
         if (
@@ -739,6 +750,8 @@ if restitution_des_valeurs:
                 "distance_dep_max"
             ]
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
+            st.proportion_nat_age = les_proportions
+            
 
 
     if current_filters != st.session_state.filters:
@@ -760,6 +773,7 @@ if restitution_des_valeurs:
                 "distance_dep_max"
             ]
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
+            st.proportion_nat_age = les_proportions
 
     # -------------------------------------------------------------------------------------
     # PAGINATION
@@ -933,17 +947,17 @@ if restitution_des_valeurs:
 
             st.subheader(sous_titre_indicateur_secteur)
 
-            (
-                pc_o,
-                pc_e,
-                ind_atfv,
-                distance_lng_sum_prc,
-                moy_age_o,
-                moy_age_e,
-                dis_med_o,
-                dis_med_e,
-                les_proportions,
-            ) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
+            #(
+            #    pc_o,
+            #    pc_e,
+            #    ind_atfv,
+            #    distance_lng_sum_prc,
+            #    moy_age_o,
+            #    moy_age_e,
+            #    dis_med_o,
+            #    dis_med_e,
+            #    les_proportions,
+            #) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
             (
                 col_carte,    
@@ -983,16 +997,30 @@ if restitution_des_valeurs:
                 col_img,col_1,col_2,col_3,col_4,col_5,col_6,col_7= st.columns([1.0,0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
                 
                 with col_img:
-                    st.image(image_path_pourcentage, width=120 )
+                    st.image(image_path_pourcentage, width=160 )
 
-                col_1.metric(les_proportions.iloc[0,0] + " an",les_proportions.iloc[0,1])
-                col_2.metric(les_proportions.iloc[1,0] + " ans",les_proportions.iloc[1,1])
-                col_3.metric(les_proportions.iloc[2,0] + " ans",les_proportions.iloc[2,1])
-                col_4.metric(les_proportions.iloc[3,0] + " ans",les_proportions.iloc[3,1])
-                col_5.metric(les_proportions.iloc[4,0] + " ans",les_proportions.iloc[4,1])
-                col_6.metric(les_proportions.iloc[5,0] + " ans",les_proportions.iloc[5,1])
-                col_7.metric(les_proportions.iloc[6,0] + " ans",les_proportions.iloc[6,1])
+                if origine_secteur != "origine_nationale":
+                    les_proportions['delta'] =st.proportion_nat_age['pourcentage'] - les_proportions['pourcentage']
+                    les_proportions['delta']=round(les_proportions['delta'],2)
+                    col_1.metric(les_proportions.iloc[0,0] + " an",f"{les_proportions.iloc[0, 1]:.2f} %",les_proportions.iloc[0,2], border=True)
+                    col_2.metric(les_proportions.iloc[1,0] + " ans",f"{les_proportions.iloc[1, 1]:.2f} %",les_proportions.iloc[1,2], border=True)
+                    col_3.metric(les_proportions.iloc[2,0] + " ans",f"{les_proportions.iloc[2, 1]:.2f} %",les_proportions.iloc[2,2], border=True)
+                    col_4.metric(les_proportions.iloc[3,0] + " ans",f"{les_proportions.iloc[3, 1]:.2f} %",les_proportions.iloc[3,2], border=True)
+                    col_5.metric(les_proportions.iloc[4,0] + " ans",f"{les_proportions.iloc[4, 1]:.2f} %",les_proportions.iloc[4,2], border=True)
+                    col_6.metric(les_proportions.iloc[5,0] + " ans",f"{les_proportions.iloc[5, 1]:.2f} %",les_proportions.iloc[5,2], border=True)
+                    col_7.metric(les_proportions.iloc[6,0] + " ans",f"{les_proportions.iloc[6, 1]:.2f} %",les_proportions.iloc[6,2], border=True)                    
+                else:
+                    #for i in range(0,7,1):
+                    #    print("i",i)
+                    col_1.metric(les_proportions.iloc[0,0] + " an",f"{les_proportions.iloc[0, 1]:.2f} %" , border=True)
+                    col_2.metric(les_proportions.iloc[1,0] + " ans",f"{les_proportions.iloc[1, 1]:.2f} %", border=True)
+                    col_3.metric(les_proportions.iloc[2,0] + " ans",f"{les_proportions.iloc[2, 1]:.2f} %", border=True)
+                    col_4.metric(les_proportions.iloc[3,0] + " ans",f"{les_proportions.iloc[3, 1]:.2f} %", border=True)
+                    col_5.metric(les_proportions.iloc[4,0] + " ans",f"{les_proportions.iloc[4, 1]:.2f} %", border=True)
+                    col_6.metric(les_proportions.iloc[5,0] + " ans",f"{les_proportions.iloc[5, 1]:.2f} %", border=True)
+                    col_7.metric(les_proportions.iloc[6,0] + " ans",f"{les_proportions.iloc[6, 1]:.2f} %", border=True)                    
 
+                
         # RESTITUTION DES GRAPHES
         # instanciation faite précedemment
         fig_score, message_score, df_score = ce_graph_TAFV.render_graph_score(
@@ -1041,7 +1069,7 @@ if restitution_des_valeurs:
         with st.container(border=True):
             col_score_1, col_x, col_score_2 = st.columns([4.9, 0.6, 4.7])
             with col_score_1:
-                with st.container(border=True):
+                with st.container(border=False):
                     st.subheader("Taux d'attractivité de fin de vie")
                     col_ind_tafv, _ = st.columns(
                         [0.5, 0.5]
@@ -1074,7 +1102,7 @@ if restitution_des_valeurs:
                             unsafe_allow_html=True,
                         )
             with col_score_2:
-                with st.container(border=True):
+                with st.container(border=False):
                     st.subheader("Indice de mobilité différentielle")
                     col_ind_imd, _ = st.columns([0.4, 0.6])  #
                     col_ind_imd.metric("IMD", ind_imd)  #
