@@ -6,7 +6,9 @@ from typing import Tuple
 
 CST_TITRE_ORIGINAIRE = "Ancrage territorial et classes d’âge"
 CST_TITRE_EXOGENE = "Attractivité territoriale et classes d’âge"
-# CST_TITRE_EXOGENE = "Attractivité territoriale et classes d’âge"
+CST_TITRE_MOBILE = "Mobilité territoriale et classes d’âge"
+CST_TITRE_INERTIE = "Inertie territoriale et classes d’âge"
+
 
 # Acceder à la classe de filtrage des données
 from my_module.graphs.Cls_graphe_score_pour_viz import ClsScorePourViz
@@ -168,7 +170,7 @@ class ClsGraphScoreAge:
                 margin=dict(
                     t=80, b=50, l=50, r=50
                 ),  # permet d'avoir même hauteur de graphe
-                title_x=0.35,  # centre le titre du graphique
+                title_x=0.3,  # centre le titre du graphique
             )
 
             # permet d'afficher le rang des cellules
@@ -361,14 +363,14 @@ class ClsGraphScoreAge:
             return fig  # , df_score_ #df_merge_st_top
 
     def render_graph_score_age_IMD(
-        self, secteurs_originaires: bool = True, page: int = 0, indicateur: str = "IMD"
+        self, secteurs_mobiles: bool = True, page: int = 0, indicateur: str = "IMD"
     ) -> Tuple[go.Figure(), pd.DataFrame]:
         """
         Initialise le traitement du graph
 
             Args:
                 page à lire
-                secteurs_originaires               : affiche les originaires ou les exogènes
+                secteurs_mobiles               : affiche les mobiles ou inertie
                 choix de l'indicateur à visualiser : ici IMD
 
             Return:
@@ -413,29 +415,30 @@ class ClsGraphScoreAge:
             # Liste des Secteurs
             sectors = df_heatmap.index.tolist()
 
-            if secteurs_originaires:
+            if secteurs_mobiles:
                 # Top n des cellules
                 top_cells = df_heatmap.stack().nlargest(top_n)
                 classes_extreme = mean_col[mean_col == mean_col.max()].index.tolist()
                 secteurs_extreme = mean_row[mean_row == mean_row.max()].index.tolist()
-                le_titre = CST_TITRE_ORIGINAIRE
-            else:  # secteur exogène
+                le_titre = CST_TITRE_INERTIE
+            else:  # secteur inertie
                 top_cells = df_heatmap.stack().nsmallest(top_n)
                 classes_extreme = mean_col[mean_col == mean_col.min()].index.tolist()
                 secteurs_extreme = mean_row[mean_row == mean_row.min()].index.tolist()
-                le_titre = CST_TITRE_EXOGENE
+                le_titre = CST_TITRE_MOBILE
 
             ma_classe_extreme = self.identifier_item_de_la_list(classes_extreme)
             mon_secteur_extreme = self.identifier_item_de_la_list(secteurs_extreme)
 
             fig = px.imshow(
                 df_heatmap,
-                title="Classe d'âge et IMD ",
+                title=le_titre, #"IMD et Classe d'âge ",
                 aspect="auto",
                 color_continuous_scale="Viridis",  # "RdBu_r",
                 labels=dict(color="IMD"),
                 zmin=-10,
                 zmax=8,
+                
             )
             # colorbar
             fig.update_coloraxes(
@@ -453,7 +456,7 @@ class ClsGraphScoreAge:
                 margin=dict(
                     t=80, b=50, l=50, r=50
                 ),  # permet d'avoir même hauteur de graphe
-                title_x=0.45,  # centre le titre du graphique
+                title_x=0.3,  # centre le titre du graphique
             )
 
             # permet d'afficher le rang des cellules
@@ -485,7 +488,7 @@ class ClsGraphScoreAge:
                 )
             # Performance des classes et secteurs
             couleur = (
-                "#AEA222" if secteurs_originaires else "purple"
+                "#AEA222" if secteurs_mobiles else "purple"
             )  #
             # 
             # Meilleur classe :
@@ -613,7 +616,7 @@ class ClsGraphScoreAge:
                     0
                 ]
                 == 0
-                and secteurs_originaires == True
+                and secteurs_mobiles == True
             ):
                 # Annotation pour notifier l'abscence d'originaire
                 fig.add_annotation(

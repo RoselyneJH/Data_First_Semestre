@@ -8,8 +8,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
-import plotly
 
 import os
 
@@ -19,7 +17,6 @@ from typing import List, Dict, Union, Tuple
 
 import polars as pl
 import numpy as np
-from pathlib import Path
 
 from my_module.Cls_load_data_pour_viz import ClsLoadDataPourViz
 from pathlib import Path
@@ -67,7 +64,6 @@ def load_geojsons():
 
 
 # Fonction pour préparer le cumul
-
 
 # --- Fonction pour récupérer data ---
 @st.cache_data
@@ -143,7 +139,7 @@ def load_dataframe() -> pd.DataFrame:
     )
     df_grp = df_polars.to_pandas()
     
-    return df_grp, df
+    return df_grp, df, nb_deces_hors_france
 
 
 def moyenne_ecart_type_national(df_fnl: pd.DataFrame) -> Tuple:
@@ -288,7 +284,7 @@ def statistique_sur_secteur(
     ordre= ["0-1", "1-20", "20-35", "35-50", "50-65", "65-90", "90+"]
 
     # proportion des classes d'age
-    les_proportions = (
+    les_proportions_age = (
         df_fnl_m["classe_age"]
         .value_counts(normalize=True)
         .mul(100)
@@ -296,11 +292,11 @@ def statistique_sur_secteur(
         .reset_index(name="pourcentage")
     )
 
-    les_proportions["classe_age"] = les_proportions["classe_age"].cat.reorder_categories(
+    les_proportions_age["classe_age"] = les_proportions_age["classe_age"].cat.reorder_categories(
         ordre,
         ordered=True
     )
-    les_proportions = les_proportions.sort_values("classe_age")
+    les_proportions_age = les_proportions_age.sort_values("classe_age")
 
     # Preparation des indicateurs
     nb_originaire = df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"][
@@ -362,7 +358,7 @@ def statistique_sur_secteur(
         age_moy_exogene,
         distance_med_originaire,
         distance_med_exogene,
-        les_proportions,
+        les_proportions_age,
     )
 
 
@@ -370,7 +366,7 @@ def statistique_sur_secteur(
 geojson_regions, geojson_departements = load_geojsons()
 
 # Recupération des datas provenant de la Bdd
-df_grp, df = load_dataframe()
+df_grp, df, nb_deces_hors_france = load_dataframe()
 
 # Chemin relatif pour la recupération des images .svg
 BASE_DIR = Path(__file__).resolve().parent
@@ -432,7 +428,11 @@ st.markdown(
         .stSlider * {
             color: #00090f !important;
     }
- 
+    /* Taille des icone dite Material*/
+    span[style*="Material Symbols Rounded"] {
+        font-size: 26px !important;  
+        vertical-align: -0.25em !important;             
+    }
 
     </style>
     """,
@@ -440,15 +440,15 @@ st.markdown(
 )
 
 # ----------------------------- font-weight: bold;
-# Sidebars
-# -----------------------------
+# Sidebars vertical-align: middle !important;
+# ----------------------------- vertical-align: -0.15em !important; 
 
 # Widgets dans la sidebar
-st.sidebar.header("Filtres")
+st.sidebar.header(":material/filter_alt: Filtres")
 
 # --- Combobox Région ---
 regions = ["Toutes les régions"] + sorted(df_grp["nom_region_deces"].unique().tolist())
-region_selected = st.sidebar.selectbox("Région :", regions)
+region_selected = st.sidebar.selectbox(":material/distance: Région :", regions)
 
 # --- Filtrage selon la région sélectionnée ---
 if region_selected == "Toutes les régions":
@@ -463,7 +463,7 @@ else:
 departements = ["Tous les départements"] + sorted(
     df_region["nom_departement_deces"].unique().tolist()
 )
-departement_selected = st.sidebar.selectbox("Département :", departements)
+departement_selected = st.sidebar.selectbox(":material/distance: Département :", departements)
 
 # Filtrage selon le département
 if departement_selected == "Tous les départements":
@@ -476,14 +476,13 @@ else:
 # -------------------------------------------------------------------------------------
 
 # ComboBox Ville
-
 cette_agglomeration=""
 
 with st.sidebar:
     villes = ["Toutes les villes"] + sorted(df_dept["ville_deces"].unique().tolist())
     # pour eviter de selectionner des villes sur des départements différents, j'active l'option disabled
     ville_selected = st.selectbox(
-        "Ville / Arrondissement :",
+        ":material/distance: Ville / Arrondissement :",
         villes,
         disabled=(departement_selected == "Tous les départements"),
         help="Choisissez un département pour activer la sélection des villes",
@@ -519,16 +518,12 @@ else:
     df_final_ = df_dept[df_dept["ville_deces"] == ville_selected]
     df_fnl_ = df_dpt[df_dpt["ville_deces"] == ville_selected]
 
-
-
 # Selection des sexes
 with st.sidebar:
-    # séparation
-    st.write("-------------------------")
-
+    # 
     choix_genre = st.radio(
-        "Genre :",
-        ["Tout", "H", "F"],
+        ":material/person: Genre :",
+        [":material/wc: ", ":material/man: ", ":material/woman: "],
         horizontal=True,
         disabled=(departement_selected != "Tous les départements")
         | (region_selected != "Toutes les régions"),
@@ -548,7 +543,7 @@ else:
 
 # Slider
 start, end = st.sidebar.slider(
-    "Âge :",
+    ":material/deployed_code_account: Âge :",
     0,
     105,
     (20, 85),
@@ -571,7 +566,27 @@ st.write("Auteur : R.Jean / Source : https://www.insee.fr/fr/statistiques")
 if len(df_final) > 0:
     valeur = df_final["nb_deces"].sum()
     if valeur > 50:
-        st.sidebar.info(f"Sélection décès : {valeur:,}".replace(",", " "))
+        nb_deces_hors_france = int(nb_deces_hors_france)
+        proportion_hf = round(nb_deces_hors_france*100/ valeur,0)
+        # creation de container avec colonne * 2 
+        with st.sidebar.container(
+            border=False,
+            height=70,
+        ):
+            col1, col2 = st.columns(
+                [1.2,  0.4]
+            )  #
+            with col1:
+                st.info(f" Sélection : {valeur:,}".replace(",", " "))
+
+            with col2:        
+                with st.popover(":material/warning:"):
+                    st.write(f"""
+                        La sélection comportent une proportion de décès à l'étranger :
+                        - Nombre de décès hors hexagone : {nb_deces_hors_france}
+                        - Proportion nationale : {proportion_hf} %
+                        """)
+        #  :material/group:  ℹ️
     else:
         st.sidebar.warning(
             f"Interprétation délicate ! \nSélection décès faible : {valeur:,}".replace(
@@ -624,7 +639,7 @@ if restitution_des_valeurs:
 
     # -------------------------------------------------------------------------------------
 
-    # === Préparation des données pour la carte ===
+    # === Préparation des données pour la carte et pour graphes  ===
     if ville_selected != "Toutes les villes":
         
         if not agglomeration:
@@ -729,7 +744,7 @@ if restitution_des_valeurs:
         moy_age_e,
         dis_med_o,
         dis_med_e,
-        les_proportions,
+        les_proportions_age,
     ) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
     if "filters" not in st.session_state:
@@ -750,7 +765,7 @@ if restitution_des_valeurs:
                 "distance_dep_max"
             ]
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
-            st.proportion_nat_age = les_proportions
+            st.proportion_nat_age = les_proportions_age
             
 
 
@@ -773,7 +788,7 @@ if restitution_des_valeurs:
                 "distance_dep_max"
             ]
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
-            st.proportion_nat_age = les_proportions
+            st.proportion_nat_age = les_proportions_age
 
     # -------------------------------------------------------------------------------------
     # PAGINATION
@@ -790,7 +805,7 @@ if restitution_des_valeurs:
         ):
             col1, col12, col3, col13, col4 = st.columns(
                 [0.35, 0.1, 0.42, 0.1, 0.35]
-            )  # 0.42
+            )  #
             with col1:
                 be_disabled = (
                     True
@@ -947,18 +962,6 @@ if restitution_des_valeurs:
 
             st.subheader(sous_titre_indicateur_secteur)
 
-            #(
-            #    pc_o,
-            #    pc_e,
-            #    ind_atfv,
-            #    distance_lng_sum_prc,
-            #    moy_age_o,
-            #    moy_age_e,
-            #    dis_med_o,
-            #    dis_med_e,
-            #    les_proportions,
-            #) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
-
             (
                 col_carte,    
                 col_pc_originaire,
@@ -967,20 +970,21 @@ if restitution_des_valeurs:
                 col_moy_age_exo,
                 col_dist_med_o,
                 col_dist_med_e,
-            ) = st.columns([1.0,0.8, 0.8, 0.9, 0.9, 0.9, 0.9])
+            ) = st.columns([0.6,0.7, 0.7, 0.9, 0.9, 0.9, 0.9])
 
             with col_carte:
                 if origine_secteur == "origine_nationale":
-                    st.image(image_path_carte, width=120 )  # Affichage  
+                    st.image(image_path_carte, width=160 )  # Affichage  
                 else:
-                    st.image(image_path_paysage, width=120 )  # Affichage 
-            col_pc_originaire.metric("Originaire %", pc_o)
-            col_pc_exogene.metric("Exogène %", pc_e)
+                    st.image(image_path_paysage, width=160 )  # Affichage 
 
-            col_moy_age_ori.metric("Âge moy. Originaire", moy_age_o)
-            col_moy_age_exo.metric("Âge moy. Exogène", moy_age_e)
-            col_dist_med_o.metric("Distance med.* Originaire", dis_med_o)
-            col_dist_med_e.metric("Distance med.* Exogène", dis_med_e)
+            col_pc_originaire.metric("Originaire", f"{pc_o} %",border=True)
+            col_pc_exogene.metric("Exogène",  f"{pc_e} %",border=True)
+
+            col_moy_age_ori.metric("Âge moy. Originaire", f"{moy_age_o} an(s)",border=True )
+            col_moy_age_exo.metric("Âge moy. Exogène",  f"{moy_age_e} an(s)",border=True)
+            col_dist_med_o.metric("Distance med.* Originaire", dis_med_o,border=True)
+            col_dist_med_e.metric("Distance med.* Exogène", dis_med_e,border=True)
 
             # calcul d'IMD
             ind_imd = round(
@@ -994,33 +998,33 @@ if restitution_des_valeurs:
             with st.container(border=True):
                 st.subheader("Pourcentage des défunts par classes d'âge")
 
-                col_img,col_1,col_2,col_3,col_4,col_5,col_6,col_7= st.columns([1.0,0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
+                col_img,col_1,col_2,col_3,col_4,col_5,col_6,col_7= st.columns([0.6,0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
                 
+                # Pour eviter de répéter et pour boucler :
+                cols = [col_1, col_2, col_3, col_4, col_5, col_6, col_7]
+
                 with col_img:
                     st.image(image_path_pourcentage, width=160 )
 
                 if origine_secteur != "origine_nationale":
-                    les_proportions['delta'] =st.proportion_nat_age['pourcentage'] - les_proportions['pourcentage']
-                    les_proportions['delta']=round(les_proportions['delta'],2)
-                    col_1.metric(les_proportions.iloc[0,0] + " an",f"{les_proportions.iloc[0, 1]:.2f} %",les_proportions.iloc[0,2], border=True)
-                    col_2.metric(les_proportions.iloc[1,0] + " ans",f"{les_proportions.iloc[1, 1]:.2f} %",les_proportions.iloc[1,2], border=True)
-                    col_3.metric(les_proportions.iloc[2,0] + " ans",f"{les_proportions.iloc[2, 1]:.2f} %",les_proportions.iloc[2,2], border=True)
-                    col_4.metric(les_proportions.iloc[3,0] + " ans",f"{les_proportions.iloc[3, 1]:.2f} %",les_proportions.iloc[3,2], border=True)
-                    col_5.metric(les_proportions.iloc[4,0] + " ans",f"{les_proportions.iloc[4, 1]:.2f} %",les_proportions.iloc[4,2], border=True)
-                    col_6.metric(les_proportions.iloc[5,0] + " ans",f"{les_proportions.iloc[5, 1]:.2f} %",les_proportions.iloc[5,2], border=True)
-                    col_7.metric(les_proportions.iloc[6,0] + " ans",f"{les_proportions.iloc[6, 1]:.2f} %",les_proportions.iloc[6,2], border=True)                    
+                    les_proportions_age['delta'] =st.proportion_nat_age['pourcentage'] - les_proportions_age['pourcentage']
+                    les_proportions_age['delta']=round(les_proportions_age['delta'],2)
+                    print("les proportion_age",les_proportions_age.info())
+                    for i, col in enumerate(cols):
+                        col.metric(
+                            f"{les_proportions_age.iloc[i, 0]} {'an' if i == 0 else 'ans'}",
+                            f"{les_proportions_age.iloc[i, 1]:.2f} %",
+                            les_proportions_age.iloc[i, 2],
+                            border=True
+                        )                   
                 else:
-                    #for i in range(0,7,1):
-                    #    print("i",i)
-                    col_1.metric(les_proportions.iloc[0,0] + " an",f"{les_proportions.iloc[0, 1]:.2f} %" , border=True)
-                    col_2.metric(les_proportions.iloc[1,0] + " ans",f"{les_proportions.iloc[1, 1]:.2f} %", border=True)
-                    col_3.metric(les_proportions.iloc[2,0] + " ans",f"{les_proportions.iloc[2, 1]:.2f} %", border=True)
-                    col_4.metric(les_proportions.iloc[3,0] + " ans",f"{les_proportions.iloc[3, 1]:.2f} %", border=True)
-                    col_5.metric(les_proportions.iloc[4,0] + " ans",f"{les_proportions.iloc[4, 1]:.2f} %", border=True)
-                    col_6.metric(les_proportions.iloc[5,0] + " ans",f"{les_proportions.iloc[5, 1]:.2f} %", border=True)
-                    col_7.metric(les_proportions.iloc[6,0] + " ans",f"{les_proportions.iloc[6, 1]:.2f} %", border=True)                    
-
-                
+                    for i, col in enumerate(cols):
+                        col.metric(
+                            f"{les_proportions_age.iloc[i, 0]} {'an' if i == 0 else 'ans'}",
+                            f"{les_proportions_age.iloc[i, 1]:.2f} %",
+                            border=True
+                        )
+                                    
         # RESTITUTION DES GRAPHES
         # instanciation faite précedemment
         fig_score, message_score, df_score = ce_graph_TAFV.render_graph_score(
@@ -1060,8 +1064,12 @@ if restitution_des_valeurs:
             st.session_state.df_ecart_type_moy_age,
         )
 
-        fig_score_IMD_age = ce_graph_IMD_age.render_graph_score_age_IMD(
+        fig_score_IMD_age_mobile = ce_graph_IMD_age.render_graph_score_age_IMD(
             False, page=st.session_state.page, indicateur="mobilite_secteur"
+        )
+
+        fig_score_IMD_age_inertie = ce_graph_IMD_age.render_graph_score_age_IMD(
+            True, page=st.session_state.page, indicateur="mobilite_secteur"
         )
 
         # fin
@@ -1302,12 +1310,23 @@ if restitution_des_valeurs:
                                             """,
                                             unsafe_allow_html=True,
                                         )
-                        
-                            
-                        (tab12I,) = st.tabs(["📊 Poids des secteurs"])
+                        if not origine_secteur == "origine_ville":
+                            tab12I, tab12I_ = st.tabs(
+                                ["📈 Top 5 Mobilité", "📊 Top 5 Inertie"]
+                            )
+                        else:
+                            (tab12I,) = st.tabs(["📊 Mobilité"])                        
+
                         with tab12I: #
                             st.plotly_chart(
-                                fig_score_IMD_age,
+                                fig_score_IMD_age_mobile,
                                 width="stretch",
                                 key="Graphe_age_IMD",
                             )
+                        if not origine_secteur == "origine_ville":
+                            with tab12I_: #
+                                st.plotly_chart(
+                                    fig_score_IMD_age_inertie,
+                                    width="stretch",
+                                    key="Graphe_age_IMD_i",
+                                )

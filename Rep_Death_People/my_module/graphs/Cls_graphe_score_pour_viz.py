@@ -9,6 +9,9 @@ from typing import Tuple
 SECTEUR_EXOGENE = "Exogènes majoritaires sur ces zones"
 SECTEUR_ORIGINAIRE = "Originaires majoritaires sur ces zones"
 SECTEUR_NEUTRE = "Equilibre Originaires - Exogènes sur ces zones"
+SECTEUR_NEUTRE_ = "Equilibre Mobile - Statique sur ces zones"
+SECTEUR_MOBILE = "Mobiles majoritaires sur ces zones"
+SECTEUR_INERTIE = "Statiques majoritaires sur ces zones"
 PAGE_SIZE = 20  # nombre de secteur affiché dans le graphe
 
 
@@ -47,7 +50,9 @@ class ClsScorePourViz:
         self.liste_df_cumul_secteur = []
         # nombre de pages
         self.pages = 0
-
+        # Indicateur traité
+        self.analyse_TAFV=True
+       
         # ecart type national pour la distance
         self.distance_ecart_type_national = distance_ecart_type_national
         # moyenne nationale pour la distance
@@ -377,34 +382,68 @@ class ClsScorePourViz:
 
         return df_plot
 
+    def est_indicateur(self,indicateur_TAFV :bool):
+        
+        '''
+        Permet d'identifier quel est l'indicateur traité
+        Args : le boolean si c'est TAFV alors TRUE sinon FALSE
+        Return none
+        '''
+        self.analyse_TAFV=False
+        if indicateur_TAFV:
+            self.analyse_TAFV=True
+
+
     @property
     def etat_global_de_ces_secteurs(self):
         """
         Args    : Le df
 
-        Return  : le type de secteurs selectionnés : exogène ou originaire ?
+        Return  : le type de secteurs selectionnés : exogène ou originaire pour indicteur TAFV ou
+            bien inertie ou mobile pour l'indicateur IMD ?
         """
-        nb_valeur_sup = self.df_cumul_secteur[self.df_cumul_secteur["TAFV"] > 0.59][
-            "TAFV"
-        ].shape[0]
-        nb_valeur_inf = self.df_cumul_secteur[self.df_cumul_secteur["TAFV"] < 0.31][
-            "TAFV"
-        ].shape[0]
-        nb_valeur_neutre = self.df_cumul_secteur[
-            (self.df_cumul_secteur["TAFV"] > 0.30)
-            & (self.df_cumul_secteur["TAFV"] < 0.60)
-        ]["TAFV"].shape[0]
-
-        if nb_valeur_neutre > nb_valeur_sup and nb_valeur_neutre > nb_valeur_inf:
-            return SECTEUR_NEUTRE
-        else:
-            if nb_valeur_inf == nb_valeur_sup:
+        if self.analyse_TAFV:
+            nb_valeur_sup = self.df_cumul_secteur[self.df_cumul_secteur["TAFV"] > 0.59][
+                "TAFV"
+            ].shape[0]
+            nb_valeur_inf = self.df_cumul_secteur[self.df_cumul_secteur["TAFV"] < 0.31][
+                "TAFV"
+            ].shape[0]
+            nb_valeur_neutre = self.df_cumul_secteur[
+                (self.df_cumul_secteur["TAFV"] > 0.30)
+                & (self.df_cumul_secteur["TAFV"] < 0.60)
+            ]["TAFV"].shape[0]
+            if nb_valeur_neutre > nb_valeur_sup and nb_valeur_neutre > nb_valeur_inf:
                 return SECTEUR_NEUTRE
             else:
-                if nb_valeur_sup > nb_valeur_inf:
-                    return SECTEUR_ORIGINAIRE
+                if nb_valeur_inf == nb_valeur_sup:
+                    return SECTEUR_NEUTRE
                 else:
-                    return SECTEUR_EXOGENE
+                    if nb_valeur_sup > nb_valeur_inf:
+                        return SECTEUR_ORIGINAIRE
+                    else:
+                        return SECTEUR_EXOGENE
+        else:
+            nb_valeur_sup = self.df_cumul_secteur[self.df_cumul_secteur["IMD"] > 0][
+                "IMD"
+            ].shape[0]
+            nb_valeur_inf = self.df_cumul_secteur[self.df_cumul_secteur["IMD"] < 0][
+                "IMD"
+            ].shape[0]
+            nb_valeur_neutre = self.df_cumul_secteur[
+                (self.df_cumul_secteur["IMD"] == 0)
+            ]["IMD"].shape[0]
+
+            if nb_valeur_neutre > nb_valeur_sup and nb_valeur_neutre > nb_valeur_inf:
+                return SECTEUR_NEUTRE_
+            else:
+                if nb_valeur_inf == nb_valeur_sup:
+                    return SECTEUR_NEUTRE_
+                else:
+                    if nb_valeur_sup > nb_valeur_inf:
+                        return SECTEUR_INERTIE
+                    else:
+                        return SECTEUR_MOBILE                    
 
     @property
     def nb_secteur_sans_deces_originaire(self):

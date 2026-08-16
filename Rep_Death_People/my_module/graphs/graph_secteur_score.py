@@ -150,7 +150,7 @@ class ClsGraphScore:
                 )
                 # Annotation pour identifier la tendance de cette zone
                 fig.add_annotation(
-                    x=0,  #
+                    x=0.5,  #
                     y=1.05,
                     xref="paper",
                     yref="paper",  # paper =coordonées relative à la feuille
@@ -379,15 +379,16 @@ class ClsGraphScore:
                     text="Inertie",
                     font=dict(size=12, color="blue"),
                 )
-                # Annotation pour identifier la tendance de cette zone
+                # Annotation pour identifier la tendance de cette zone  
+                self.class_filtrage.est_indicateur(False)  # cela me permet de traiter IMD        
                 fig.add_annotation(
-                    x=0,  #
+                    x=0.5,  #
                     y=1.05,
                     xref="paper",
                     yref="paper",  # paper =coordonées relative à la feuille
                     showarrow=False,
                     text=self.class_filtrage.etat_global_de_ces_secteurs,
-                    font=dict(size=14, color="blue"),
+                    font=dict(size=12, color="blue"),
                 )
 
                 fig.add_vline(x=-0, line_dash="dash", line_color="white")
