@@ -528,12 +528,12 @@ with st.sidebar:
         disabled=(departement_selected != "Tous les départements")
         | (region_selected != "Toutes les régions"),
         help="Déselectionner le département et/ou la région pour activer les boutons",
-    )
+    ) 
 
-if choix_genre == "H":
+if choix_genre == ":material/man: ":
     df_final_f = df_final_.query("sex=='1'")
     df_fnl_f = df_fnl_.query("sex=='1'")
-elif choix_genre == "F":
+elif choix_genre == ":material/woman: ":
     df_final_f = df_final_.query("sex== '2'")
     df_fnl_f = df_fnl_.query("sex== '2'")
 else:
@@ -582,9 +582,9 @@ if len(df_final) > 0:
             with col2:        
                 with st.popover(":material/warning:"):
                     st.write(f"""
-                        La sélection comportent une proportion de décès à l'étranger :
-                        - Nombre de décès hors hexagone : {nb_deces_hors_france}
-                        - Proportion nationale : {proportion_hf} %
+                        Pour cette année, il y a eu des décès à l'étranger :
+                        - Nombre de décès hors hexagone   : {nb_deces_hors_france}
+                        - Proportion avec cette selection : {proportion_hf} %
                         """)
         #  :material/group:  ℹ️
     else:
@@ -881,19 +881,12 @@ if restitution_des_valeurs:
     st.sidebar.plotly_chart(fig, width="stretch")
 
     # --- Tabulations  ---
-    (tabMain,) = st.tabs(["🔍 Analyse "])
+    (tabMain,tabKpi) = st.tabs(["Intro", "🔍 Analyse "])
 
     # -----------------------------
     # TAB 1
     # -----------------------------
     with tabMain:
-        if origine_secteur == "origine_nationale":
-            sous_titre_indicateur_personne = "Portrait moyen du défunt en France"
-            sous_titre_indicateur_secteur = "Indicateurs nationaux"
-        else:
-            sous_titre_indicateur_personne = "Portrait moyen du défunt sur ce secteur"
-            sous_titre_indicateur_secteur = "Indicateurs territoriaux"
-
         with st.container(border=True):
             st.subheader("Objectifs :")
             st.markdown(
@@ -911,6 +904,71 @@ if restitution_des_valeurs:
                 """,
                 unsafe_allow_html=True,
             )
+            with st.container(border=True):
+                st.subheader("KPI :")
+                st.write(":material/keyboard_double_arrow_right: Taux d'ancrage de fin de vie")
+                st.markdown(
+                    """
+                    <div style="background-color: #ADD8E6; ">
+                    📌 Le taux d'ancrage de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir,
+                        au moment du décès, des personnes qui y sont nées. \n 
+                    <b></b>\n                          
+                    """,
+                    unsafe_allow_html=True,
+                )
+                with st.popover("ℹ️ Interprétation "):
+                    st.markdown(
+                        """
+                        <div style="background-color: #ADD8E6;
+                            padding:12px;
+                            border-radius:8px;
+                            border-left:4px solid #1f77b4; ">
+                            <b>-</b> TAFV < 0.5 le secteur est très attractif en fin de vie pour les exogènes. Cela peut 
+                            refléter la présence d'hôpitaux, d'EHPAD ou de zones de retraite résidentielle.<br>
+                            <b>-</b> TAFV > 0.5 les décès sont majoritairement locaux (fort ancrage territorial).
+                            Cela correspond à une faible mobilité residentielle soulignant une forte identité culturelle.<br>
+                        </div>              
+                        """,
+                        unsafe_allow_html=True,
+                )
+                st.write(":material/keyboard_double_arrow_right: Indice de mobilité différentielle")
+                st.markdown(
+                    """
+                    <div style="background-color: #ADD8E6; ">
+                    📌 L’indice de mobilité différentielle (IMD) permet de répondre à cette question :
+                    Ce territoire est-il plus ou moins mobile que la moyenne nationale ?\n     
+                    <b></b>\n                    
+                    </div>                
+                    """,
+                    unsafe_allow_html=True,
+                )
+                with st.popover("ℹ️ Interprétation "):
+                    st.markdown(
+                        """
+                    <div style="background-color: #ADD8E6;
+                        padding:12px;
+                        border-radius:8px;
+                        border-left:4px solid #1f77b4; ">
+                        <b>-</b> IMD < 0 Ce territoire accueille ou est associé à des populations dont 
+                        les trajectoires de vie sont significativement plus mobiles que la moyenne nationale.
+                        Cela correspond à des territoires de circulation.<br>
+                        <b>-</b> IMD = 0 Le secteur a une mobilité identique à la moyenne du pays. <br>
+                        <b>-</b> IMD > 0 le secteur a une mobilité plus faible que la moyenne nationale.
+                        Cela peut refléter des territoires d'ancrage. <br>
+                    </div>                
+                    """,
+                        unsafe_allow_html=True,
+                    )
+
+    with tabKpi:
+        if origine_secteur == "origine_nationale":
+            sous_titre_indicateur_personne = "Portrait moyen du défunt en France"
+            sous_titre_indicateur_secteur = "Indicateurs nationaux"
+        else:
+            sous_titre_indicateur_personne = "Portrait moyen du défunt sur ce secteur"
+            sous_titre_indicateur_secteur = "Indicateurs territoriaux"
+
+        
 
         with st.container(border=True):
 
@@ -1000,7 +1058,7 @@ if restitution_des_valeurs:
 
                 col_img,col_1,col_2,col_3,col_4,col_5,col_6,col_7= st.columns([0.6,0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
                 
-                # Pour eviter de répéter et pour boucler :
+                # Pour eviter de répéter on fait une boucle :
                 cols = [col_1, col_2, col_3, col_4, col_5, col_6, col_7]
 
                 with col_img:
@@ -1077,68 +1135,20 @@ if restitution_des_valeurs:
         with st.container(border=True):
             col_score_1, col_x, col_score_2 = st.columns([4.9, 0.6, 4.7])
             with col_score_1:
-                with st.container(border=False):
-                    st.subheader("Taux d'attractivité de fin de vie")
+                with st.container(border=False):                    
                     col_ind_tafv, _ = st.columns(
                         [0.5, 0.5]
                     )  #
                     col_ind_tafv.metric(
                         "TAFV", ind_atfv
                     )  # 
-                    st.markdown(
-                        """
-                        <div style="background-color: #ADD8E6; ">
-                        📌 Le taux d'attractivité de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir,
-                         au moment du décès, des personnes qui n'y sont pas nées. \n 
-                        <b></b>\n                          
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    with st.popover("ℹ️ Interprétation "):
-                        st.markdown(
-                            """
-                            <div style="background-color: #ADD8E6;
-                                padding:12px;
-                                border-radius:8px;
-                                border-left:4px solid #1f77b4; ">
-                                <b>-</b> TAFV < 0.3 le secteur est très attractif en fin de vie pour les exogènes. Cela peut 
-                                refléter la présence d'hôpitaux, d'EHPAD ou de zones de retraite résidentielle.<br>
-                                <b>-</b> TAFV > 0.6 les décès sont majoritairement locaux (fort ancrage territorial).
-                                Cela correspond à une faible mobilité residentielle soulignant une forte identité culturelle.<br>
-                            </div>              
-                            """,
-                            unsafe_allow_html=True,
-                        )
+                    
+                    
             with col_score_2:
                 with st.container(border=False):
-                    st.subheader("Indice de mobilité différentielle")
                     col_ind_imd, _ = st.columns([0.4, 0.6])  #
                     col_ind_imd.metric("IMD", ind_imd)  #
-                    st.markdown(
-                        """
-                        <div style="background-color: #ADD8E6; ">
-                        📌 L’indice de mobilité différentielle permet de répondre à cette question :\n
-                        Ce territoire est-il plus ou moins mobile que la moyenne nationale ?\n                        
-                        </div>                
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                    with st.popover("ℹ️ Interprétation "):
-                        st.markdown(
-                            """
-                        <div style="background-color: #ADD8E6;
-                            padding:12px;
-                            border-radius:8px;
-                            border-left:4px solid #1f77b4; ">
-                            <b>-</b> IMD < 0 le secteur a une mobilité plus importante que la moyenne nationale.
-                            Cela correspond à des territoires de circulation.<br>
-                            <b>-</b> IMD = 0 Le secteur a une mobilité identique à la moyenne du pays. <br>
-                            <b>-</b> IMD > 0 le secteur a une mobilité plus faible que la moyenne nationale.
-                            Cela peut refléter des territoires d'ancrage. <br>
-                        </div>                
-                        """,
-                            unsafe_allow_html=True,
-                        )
+                    
 
             with st.container(border=True):
                 # Préparation de l'alignement des graphes 
@@ -1161,9 +1171,8 @@ if restitution_des_valeurs:
                                         padding:12px;
                                         border-radius:8px;
                                         border-left:4px solid #1f77b4; ">
-                                    Le taux d'attractivité découpe le graphe en 3 zones : <br>
+                                    Le taux d'ancrage découpe le graphe en 2 zones : <br>
                                     <b>-</b> Zone à forte présence d'exogènes dans ce secteur <br>
-                                    <b>-</b> Zone neutre <br>
                                     <b>-</b> Zone à forte présence d'originaires dans ce secteur <br>
                                     </div>
                                     """,
@@ -1248,7 +1257,7 @@ if restitution_des_valeurs:
                                     des territoires.<br>
                                     <b>-</b> Les 5 meilleures cellules apparaissent avec un cadre noir. 
                                     Leur rang est spécifié dans l'encadré.<br>
-                                    <b>-</b> La meilleur classe d'age et le meilleur secteur sont mis en surbrillance.
+                                    <b>-</b> La meilleure classe d'age et le meilleur secteur sont mis en surbrillance.
                                     </div>
                                     """,
                                     unsafe_allow_html=True,
@@ -1299,13 +1308,14 @@ if restitution_des_valeurs:
                                         st.markdown(
                                             """
                                             <div style="background-color: #ADD8E6;
-                                                padding:12px;
-                                                border-radius:8px;
-                                                border-left:4px solid #1f77b4; ">
-                                            Le taux d'attractivité découpe le graphe en 3 zones : <br>
-                                            <b>-</b> Zone à forte présence d'exogènes dans ce secteur <br>
-                                            <b>-</b> Zone neutre <br>
-                                            <b>-</b> Zone à forte présence d'originaires dans ce secteur <br>
+                                            padding:12px;
+                                            border-radius:8px;
+                                            border-left:4px solid #1f77b4; ">
+                                            Ces deux visualisations présentent le top 5 des meilleurs IMD pour la mobilité et l'inertie
+                                            des territoires.<br>
+                                            <b>-</b> Les 5 meilleures cellules apparaissent avec un cadre noir. 
+                                            Leur rang est spécifié dans l'encadré.<br>
+                                            <b>-</b> La meilleure classe d'age et le meilleur secteur sont mis en surbrillance.
                                             </div>
                                             """,
                                             unsafe_allow_html=True,

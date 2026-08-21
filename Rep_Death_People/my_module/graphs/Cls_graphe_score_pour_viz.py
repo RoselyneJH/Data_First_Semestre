@@ -403,15 +403,14 @@ class ClsScorePourViz:
             bien inertie ou mobile pour l'indicateur IMD ?
         """
         if self.analyse_TAFV:
-            nb_valeur_sup = self.df_cumul_secteur[self.df_cumul_secteur["TAFV"] > 0.59][
+            nb_valeur_sup = self.df_cumul_secteur[self.df_cumul_secteur["TAFV"] > 0.5][
                 "TAFV"
             ].shape[0]
-            nb_valeur_inf = self.df_cumul_secteur[self.df_cumul_secteur["TAFV"] < 0.31][
+            nb_valeur_inf = self.df_cumul_secteur[self.df_cumul_secteur["TAFV"] < 0.5][
                 "TAFV"
             ].shape[0]
             nb_valeur_neutre = self.df_cumul_secteur[
-                (self.df_cumul_secteur["TAFV"] > 0.30)
-                & (self.df_cumul_secteur["TAFV"] < 0.60)
+                (self.df_cumul_secteur["TAFV"] == 0.5)
             ]["TAFV"].shape[0]
             if nb_valeur_neutre > nb_valeur_sup and nb_valeur_neutre > nb_valeur_inf:
                 return SECTEUR_NEUTRE
