@@ -77,6 +77,8 @@ def load_dataframe() -> pd.DataFrame:
             - dataframe avec agregation selon kpi
             - dataframe standard sans agregation selon kpi
             - dataframe avec rang des kpis selon secteur
+            - nb deces hors france
+            - nb total décès
     """
     # Charger secrets
     if hasattr(st, "secrets"):
@@ -100,7 +102,7 @@ def load_dataframe() -> pd.DataFrame:
         mode=mode,
     )
 
-    df_person_nais_dece_departement_region = (
+    df_person_nais_dece_departement_region,nb_total_selection = (
         my_class.ExtractionDataTableDeathPeopleView()
     )
 
@@ -121,7 +123,7 @@ def load_dataframe() -> pd.DataFrame:
             "code_region_deces",
             "code_departement_deces",
             "age",
-            "sex",  # ajout
+            "sex",  
             "classe_age",
             "origine_nationale",
             "origine_region",
@@ -139,7 +141,7 @@ def load_dataframe() -> pd.DataFrame:
     )
     df_grp = df_polars.to_pandas()
     
-    return df_grp, df, nb_deces_hors_france
+    return df_grp, df, nb_deces_hors_france, nb_total_selection
 
 
 def moyenne_ecart_type_national(df_fnl: pd.DataFrame) -> Tuple:
@@ -284,6 +286,14 @@ def statistique_sur_secteur(
     ordre= ["0-1", "1-20", "20-35", "35-50", "50-65", "65-90", "90+"]
 
     # proportion des classes d'age
+    les_proportions_age_EXO = (
+        df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"]["classe_age"]
+        .value_counts(normalize=True)
+        .mul(100)
+        .round(3)
+        .reset_index(name="pourcentage")
+    )
+
     les_proportions_age = (
         df_fnl_m["classe_age"]
         .value_counts(normalize=True)
@@ -292,12 +302,22 @@ def statistique_sur_secteur(
         .reset_index(name="pourcentage")
     )
 
+    # ordonne
     les_proportions_age["classe_age"] = les_proportions_age["classe_age"].cat.reorder_categories(
         ordre,
         ordered=True
     )
+
     les_proportions_age = les_proportions_age.sort_values("classe_age")
 
+    # ordonne ATFV
+    les_proportions_age_EXO["classe_age"] = les_proportions_age_EXO["classe_age"].cat.reorder_categories(
+        ordre,
+        ordered=True
+    )
+
+    les_proportions_age_EXO = les_proportions_age_EXO.sort_values("classe_age")
+    
     # Preparation des indicateurs
     nb_originaire = df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"][
         cette_origine_secteur
@@ -359,6 +379,7 @@ def statistique_sur_secteur(
         distance_med_originaire,
         distance_med_exogene,
         les_proportions_age,
+        les_proportions_age_EXO,
     )
 
 
@@ -366,7 +387,7 @@ def statistique_sur_secteur(
 geojson_regions, geojson_departements = load_geojsons()
 
 # Recupération des datas provenant de la Bdd
-df_grp, df, nb_deces_hors_france = load_dataframe()
+df_grp, df, nb_deces_hors_france,nb_total_selection = load_dataframe()
 
 # Chemin relatif pour la recupération des images .svg
 BASE_DIR = Path(__file__).resolve().parent
@@ -374,12 +395,13 @@ image_path_men = BASE_DIR / "assets" / "men.svg"
 image_path_women = BASE_DIR / "assets" / "women.svg"
 image_path_carte = BASE_DIR / "assets" / "France.svg"
 image_path_pourcentage = BASE_DIR / "assets" / "Pourcentage.svg"
+image_path_pourcentage_EXO = BASE_DIR / "assets" / "Pourcentage_EXO.svg"
 image_path_paysage = BASE_DIR / "assets" / "Paysage.svg"
 
 # Le titre
 st.title("Dynamiques et attractivités des territoires ")
-st.header("Insights pour assurances et politiques publiques")
-st.subheader("Analyse des décès en France (2024)")
+st.header("Insights pour assurances, société industrielle et politiques publiques")
+st.subheader("Trajectoires de vie des défunts en France en 2024")
 
 # --- Fond d'écran ---
 st.markdown(
@@ -439,13 +461,14 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ----------------------------- font-weight: bold;
-# Sidebars vertical-align: middle !important;
-# ----------------------------- vertical-align: -0.15em !important; 
+# ----------------------------- 
+# Sidebars 
+# ----------------------------- 
 
 # Widgets dans la sidebar
-st.sidebar.header(":material/filter_alt: Filtres")
 
+# Utilisation de la bibliothèque Google Material Symbols
+st.sidebar.header(":material/filter_alt: Filtres") 
 # --- Combobox Région ---
 regions = ["Toutes les régions"] + sorted(df_grp["nom_region_deces"].unique().tolist())
 region_selected = st.sidebar.selectbox(":material/distance: Région :", regions)
@@ -520,20 +543,30 @@ else:
 
 # Selection des sexes
 with st.sidebar:
-    # 
+    # illustration :
+    CST_GENRE = ":material/person: Genre :"
+    CST_HOMME_FEMME = ":material/wc: "
+    CST_HOMME = ":material/man: "
+    CST_FEMME = ":material/woman: "
+    
     choix_genre = st.radio(
-        ":material/person: Genre :",
-        [":material/wc: ", ":material/man: ", ":material/woman: "],
+        CST_GENRE,
+        [CST_HOMME_FEMME, CST_HOMME, CST_FEMME],
         horizontal=True,
         disabled=(departement_selected != "Tous les départements")
         | (region_selected != "Toutes les régions"),
         help="Déselectionner le département et/ou la région pour activer les boutons",
+        captions=[
+        "Tous ",
+        "Hom.",
+        "Fem.",
+        ],
     ) 
 
-if choix_genre == ":material/man: ":
+if choix_genre == CST_HOMME:
     df_final_f = df_final_.query("sex=='1'")
     df_fnl_f = df_fnl_.query("sex=='1'")
-elif choix_genre == ":material/woman: ":
+elif choix_genre == CST_FEMME:
     df_final_f = df_final_.query("sex== '2'")
     df_fnl_f = df_fnl_.query("sex== '2'")
 else:
@@ -566,27 +599,14 @@ st.write("Auteur : R.Jean / Source : https://www.insee.fr/fr/statistiques")
 if len(df_final) > 0:
     valeur = df_final["nb_deces"].sum()
     if valeur > 50:
-        nb_deces_hors_france = int(nb_deces_hors_france)
-        proportion_hf = round(nb_deces_hors_france*100/ valeur,0)
+        
         # creation de container avec colonne * 2 
         with st.sidebar.container(
             border=False,
             height=70,
         ):
-            col1, col2 = st.columns(
-                [1.2,  0.4]
-            )  #
-            with col1:
-                st.info(f" Sélection : {valeur:,}".replace(",", " "))
-
-            with col2:        
-                with st.popover(":material/warning:"):
-                    st.write(f"""
-                        Pour cette année, il y a eu des décès à l'étranger :
-                        - Nombre de décès hors hexagone   : {nb_deces_hors_france}
-                        - Proportion avec cette selection : {proportion_hf} %
-                        """)
-        #  :material/group:  ℹ️
+           st.info(f"Sélection décès : {valeur:,}".replace(",", " "))
+                
     else:
         st.sidebar.warning(
             f"Interprétation délicate ! \nSélection décès faible : {valeur:,}".replace(
@@ -745,6 +765,7 @@ if restitution_des_valeurs:
         dis_med_o,
         dis_med_e,
         les_proportions_age,
+        les_proportions_EXO_age,
     ) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
     if "filters" not in st.session_state:
@@ -765,7 +786,8 @@ if restitution_des_valeurs:
                 "distance_dep_max"
             ]
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
-            st.proportion_nat_age = les_proportions_age
+            st.proportion_nat_age = les_proportions_age.copy(True)
+            st.proportion_EXO_nat_age = les_proportions_EXO_age.copy(True)
             
 
 
@@ -788,7 +810,8 @@ if restitution_des_valeurs:
                 "distance_dep_max"
             ]
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
-            st.proportion_nat_age = les_proportions_age
+            st.proportion_nat_age = les_proportions_age.copy(True)
+            st.proportion_EXO_nat_age = les_proportions_EXO_age.copy(True)
 
     # -------------------------------------------------------------------------------------
     # PAGINATION
@@ -816,7 +839,7 @@ if restitution_des_valeurs:
                     st.button(
                         "⬅️",
                         disabled=be_disabled,
-                        use_container_width=True,
+                        use_container_width='stretch',
                         help="Secteurs à mortalité faible",
                     )
                     and not be_disabled
@@ -831,7 +854,7 @@ if restitution_des_valeurs:
                 if st.button(
                     "➡️",
                     disabled=be_disabled,
-                    use_container_width=True,
+                    use_container_width='stretch',
                     help="Secteurs à mortalité forte",
                 ):  # type: ignore
                     st.session_state.page -= 1
@@ -841,6 +864,7 @@ if restitution_des_valeurs:
 
     # faire un petit espace pour eviter d'interargir avec la map et les boutons
     st.sidebar.space(size="xxsmall")
+
     # -------------------------------------------------------------------------------------
 
     # -----------------------------
@@ -880,85 +904,113 @@ if restitution_des_valeurs:
     # --- Affichage dans Streamlit ---
     st.sidebar.plotly_chart(fig, width="stretch")
 
+    # -----------------------------
+    # L'ECRAN 
+    # -----------------------------
+
     # --- Tabulations  ---
-    (tabMain,tabKpi) = st.tabs(["Intro", "🔍 Analyse "])
+    (tabMain,tabKpi, tabGraphAnalyse) = st.tabs(["Intro", "🔍 Statistiques ", "📈 Analyse"])
 
     # -----------------------------
     # TAB 1
     # -----------------------------
     with tabMain:
         with st.container(border=True):
-            st.subheader("Objectifs :")
-            st.markdown(
-                """
-                <div style="background-color: #ADD8E6; ">
-                Cette présentation consiste à distinguer deux types de territoires : ceux qui gagnent des seniors (Attractivité)
-                et ceux qui y restent pour leur vie (Ancrage).\n
-                
-                Cette information est importante pour les sociétés d'assurances et complémentaires santé. <br> Les territoires 
-                avec beaucoup de seniors indiquent potentiellement : <br>
-                <b>-</b> Des successions plus nombreuses à moyen terme <br>
-                <b>-</b> Des transferts d’épargne et d’immobilier <br>
-                <b>-</b> Une activation future de contrats d’assurance-vie <br>
-                </div>                
-                """,
-                unsafe_allow_html=True,
-            )
-            with st.container(border=True):
-                st.subheader("KPI :")
-                st.write(":material/keyboard_double_arrow_right: Taux d'ancrage de fin de vie")
-                st.markdown(
+            st.subheader("Objectifs et KPI :")
+            col_obj,col_description_kpi = st.columns([5.0,4.2], vertical_alignment="top")
+            with col_obj:
+                with st.container(border=True):
+                    st.markdown(
                     """
                     <div style="background-color: #ADD8E6; ">
-                    📌 Le taux d'ancrage de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir,
-                        au moment du décès, des personnes qui y sont nées. \n 
-                    <b></b>\n                          
+                    🎯 Cette présentation consiste à distinguer deux types de territoires : ceux qui gagnent des seniors (Attractivité)
+                    et ceux qui y restent pour leur vie (Ancrage).<br>\n
+                    
+                    Cette information est importante pour l'organisation et la gestion du territoire, la compréhension des besoins de 
+                    la population ciblée (protection sociale, attentes économiques, spécificités culturelles..).<br> 
+                    <br>
+                    ➡️ Les territoires avec beaucoup de seniors indiquent potentiellement : <br>
+                    <b>-</b> Des transferts d’épargne et d’immobilier <br>
+                    <b>-</b> Une activation future de contrats d’assurance-vie <br>
+                    <br>
+                    ➡️ Les territoires avec beaucoup d'exogène soulignent : <br>
+                    <b>-</b> La présence d'infrastructure medicales, d'hepad <br>
+                    <b>-</b> Une meilleure qualité de vie <br>
+                    <br>
+                    ➡️ Les territoires avec beaucoup d'originaires soulignent : <br>
+                    <b>-</b> Un fort attachement à son territoire, une identité très marquée qui peut 
+                    s'appuyer sur des habitudes culturelles ou de consommation <br>
+                    <br>
+                    ➡️ La temporalité des decès permet d'identifier : <br>
+                    <b>-</b> Les spécificités des trajectoires de vie <br>
+                    </div>                
                     """,
                     unsafe_allow_html=True,
                 )
-                with st.popover("ℹ️ Interprétation "):
+            with col_description_kpi:
+                with st.container(border=True):
+                    
+                    st.write(":material/keyboard_double_arrow_right: Taux d'ancrage de fin de vie")
                     st.markdown(
                         """
+                        <div style="background-color: #ADD8E6; ">
+                        📌 Le taux d'ancrage de fin de vie (TAFV) mesure la capacité d'un secteur à accueillir,
+                            au moment du décès, des personnes qui y sont nées. \n 
+                        <b></b>\n                          
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    with st.popover("ℹ️ Interprétation "):
+                        st.markdown(
+                            """
+                            <div style="background-color: #ADD8E6;
+                                padding:12px;
+                                border-radius:8px;
+                                border-left:4px solid #1f77b4; ">
+                                <b>-</b> TAFV < 0.5 le secteur est très attractif en fin de vie pour les exogènes. Cela peut 
+                                refléter la présence d'hôpitaux, d'EHPAD ou de zones de retraite résidentielle.<br>
+                                <b>-</b> TAFV > 0.5 les décès sont majoritairement locaux (fort ancrage territorial).
+                                Cela correspond à une faible mobilité residentielle soulignant une forte identité culturelle.<br>
+                            </div>              
+                            """,
+                            unsafe_allow_html=True,
+                    )
+                    st.write(":material/keyboard_double_arrow_right: Indice de mobilité différentielle")
+                    st.markdown(
+                        """
+                        <div style="background-color: #ADD8E6; ">
+                        📌 L’indice de mobilité différentielle (IMD) permet de répondre à cette question :
+                        Ce territoire est-il plus ou moins mobile que la moyenne nationale ?\n     
+                        <b></b>\n                    
+                        </div>                
+                        """,
+                        unsafe_allow_html=True,
+                    )
+                    with st.popover("ℹ️ Interprétation "):
+                        st.markdown(
+                            """
                         <div style="background-color: #ADD8E6;
                             padding:12px;
                             border-radius:8px;
                             border-left:4px solid #1f77b4; ">
-                            <b>-</b> TAFV < 0.5 le secteur est très attractif en fin de vie pour les exogènes. Cela peut 
-                            refléter la présence d'hôpitaux, d'EHPAD ou de zones de retraite résidentielle.<br>
-                            <b>-</b> TAFV > 0.5 les décès sont majoritairement locaux (fort ancrage territorial).
-                            Cela correspond à une faible mobilité residentielle soulignant une forte identité culturelle.<br>
-                        </div>              
+                            <b>-</b> IMD < 0 Ce territoire accueille ou est associé à des populations dont 
+                            les trajectoires de vie sont significativement plus mobiles que la moyenne nationale.
+                            Cela correspond à des territoires de circulation.<br>
+                            <b>-</b> IMD = 0 Le secteur a une mobilité identique à la moyenne du pays. <br>
+                            <b>-</b> IMD > 0 le secteur a une mobilité plus faible que la moyenne nationale.
+                            Cela peut refléter des territoires d'ancrage. <br>
+                        </div>                
                         """,
-                        unsafe_allow_html=True,
-                )
-                st.write(":material/keyboard_double_arrow_right: Indice de mobilité différentielle")
-                st.markdown(
-                    """
-                    <div style="background-color: #ADD8E6; ">
-                    📌 L’indice de mobilité différentielle (IMD) permet de répondre à cette question :
-                    Ce territoire est-il plus ou moins mobile que la moyenne nationale ?\n     
-                    <b></b>\n                    
-                    </div>                
-                    """,
-                    unsafe_allow_html=True,
-                )
-                with st.popover("ℹ️ Interprétation "):
-                    st.markdown(
-                        """
-                    <div style="background-color: #ADD8E6;
-                        padding:12px;
-                        border-radius:8px;
-                        border-left:4px solid #1f77b4; ">
-                        <b>-</b> IMD < 0 Ce territoire accueille ou est associé à des populations dont 
-                        les trajectoires de vie sont significativement plus mobiles que la moyenne nationale.
-                        Cela correspond à des territoires de circulation.<br>
-                        <b>-</b> IMD = 0 Le secteur a une mobilité identique à la moyenne du pays. <br>
-                        <b>-</b> IMD > 0 le secteur a une mobilité plus faible que la moyenne nationale.
-                        Cela peut refléter des territoires d'ancrage. <br>
-                    </div>                
-                    """,
-                        unsafe_allow_html=True,
-                    )
+                            unsafe_allow_html=True,
+                        )
+                    with st.container(border=True):
+                        nb_deces_hors_france = int(nb_deces_hors_france)
+                        proportion_hf = round(nb_deces_hors_france*100/ nb_total_selection,0)    
+                        st.write(f"""
+                                Pour cette année, il y a eu des décès à l'étranger :
+                                - Nombre     : {nb_deces_hors_france}
+                                - Proportion : {proportion_hf} %
+                                """)
 
     with tabKpi:
         if origine_secteur == "origine_nationale":
@@ -968,7 +1020,6 @@ if restitution_des_valeurs:
             sous_titre_indicateur_personne = "Portrait moyen du défunt sur ce secteur"
             sous_titre_indicateur_secteur = "Indicateurs territoriaux"
 
-        
 
         with st.container(border=True):
 
@@ -1053,36 +1104,37 @@ if restitution_des_valeurs:
             #
             st.caption("Distance med.* = Distance médiane ")
 
+            ce_graph_proportion_age = graph_score_age(df_fnl_m, nom_secteur, origine_secteur)
+            fig_pourcentage = ce_graph_proportion_age.render_graph_pourcentage_age(les_proportions_age,
+            st.proportion_nat_age)
+
+            ce_graph_proportion_EXO_age = graph_score_age(df_fnl_m, nom_secteur, origine_secteur)
+            fig_pourcentage_EXO = ce_graph_proportion_EXO_age.render_graph_pourcentage_age(les_proportions_EXO_age,
+            st.proportion_EXO_nat_age,"exogene")            
+
             with st.container(border=True):
                 st.subheader("Pourcentage des défunts par classes d'âge")
-
-                col_img,col_1,col_2,col_3,col_4,col_5,col_6,col_7= st.columns([0.6,0.6, 0.6, 0.6, 0.6, 0.6, 0.6, 0.6])
-                
-                # Pour eviter de répéter on fait une boucle :
-                cols = [col_1, col_2, col_3, col_4, col_5, col_6, col_7]
-
-                with col_img:
-                    st.image(image_path_pourcentage, width=160 )
-
-                if origine_secteur != "origine_nationale":
-                    les_proportions_age['delta'] =st.proportion_nat_age['pourcentage'] - les_proportions_age['pourcentage']
-                    les_proportions_age['delta']=round(les_proportions_age['delta'],2)
-                    print("les proportion_age",les_proportions_age.info())
-                    for i, col in enumerate(cols):
-                        col.metric(
-                            f"{les_proportions_age.iloc[i, 0]} {'an' if i == 0 else 'ans'}",
-                            f"{les_proportions_age.iloc[i, 1]:.2f} %",
-                            les_proportions_age.iloc[i, 2],
-                            border=True
-                        )                   
-                else:
-                    for i, col in enumerate(cols):
-                        col.metric(
-                            f"{les_proportions_age.iloc[i, 0]} {'an' if i == 0 else 'ans'}",
-                            f"{les_proportions_age.iloc[i, 1]:.2f} %",
-                            border=True
+                with st.container(border=True):
+                    col_img,col_graphe = st.columns([0.6,4.2], vertical_alignment="center")
+                    with col_img:
+                        st.image(image_path_pourcentage, width=260 ) 
+                    
+                    with col_graphe:
+                        st.plotly_chart(
+                        fig_pourcentage, width='stretch', key="Graphe_score_pourcentage"
                         )
-                                    
+                
+                with st.container(border=True):
+                    col_img,col_graphe = st.columns([0.6,4.2], vertical_alignment="center")
+                    with col_img:
+                        st.image(image_path_pourcentage_EXO, width=260 ) 
+                    
+                    with col_graphe:
+                        st.plotly_chart(
+                        fig_pourcentage_EXO, width='stretch', key="Graphe_score_pourcentage_exo"
+                        )
+    
+    with tabGraphAnalyse:                                
         # RESTITUTION DES GRAPHES
         # instanciation faite précedemment
         fig_score, message_score, df_score = ce_graph_TAFV.render_graph_score(

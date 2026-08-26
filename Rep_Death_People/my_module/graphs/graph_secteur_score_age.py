@@ -1,5 +1,6 @@
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 import polars as pl
 from typing import Tuple
@@ -8,7 +9,7 @@ CST_TITRE_ORIGINAIRE = "Ancrage territorial et classes d’âge"
 CST_TITRE_EXOGENE = "Attractivité territoriale et classes d’âge"
 CST_TITRE_MOBILE = "Mobilité territoriale et classes d’âge"
 CST_TITRE_INERTIE = "Inertie territoriale et classes d’âge"
-
+CST_HEIGHT_VAL = 530
 
 # Acceder à la classe de filtrage des données
 from my_module.graphs.Cls_graphe_score_pour_viz import ClsScorePourViz
@@ -77,10 +78,126 @@ class ClsGraphScoreAge:
             mon_item = str(ma_list[0])  # je n'ai pas de supériorité identifié
 
         return mon_item
+    
+    def render_graph_pourcentage_age(self, les_pourcentages_secteur:pd.DataFrame,
+                                    les_pourcentages_national:pd.DataFrame = None,
+                                    type_graphe:str = "standard"
+        )-> Tuple[go.Figure()]:
+        '''
+        restitue le graphe des pourcentages des classes d'age
+
+            Args:
+                les_pourcentages  : un DataFrame de classe d'age avec pourcentage secteur
+                                    un DataFrame de classe d'age avec pourcentage national
+                classe age/ pourcentage relatif à une zone/pourcentage realif à la nation
+                Quel type de graphe ? Cela permet de mettre un titre adapté
+                    Standard pourentage des ages sectoriel
+                    Exogene
+
+
+            Return:
+                le graphe
+                restitue les différences des pourcentages zone vs nation
+
+             fig = px.bar(
+                les_pourcentages_secteur,
+                x="classe_age",
+                y="pourcentage_region",
+                #color="Type",
+                #color_discrete_sequence=palette,  # 
+                #barmode="group",
+                title="Pourcentage",
+            )
+        '''
+        height_val_p = 270
+        # titre du graphe :
+        if type_graphe=="standard" or len(type_graphe.strip()) ==0:
+            le_titre_graphe = "Comparaison des classes d'âge "
+        else:
+            le_titre_graphe = "Comparaison des classes d'âge des exogènes "
+        # faut-il faire une comparaison ? Non si vue nationale  "Comparaison des classes d'âge et écart sous-jacent"
+
+        faire_une_comparaison = True        
+        if les_pourcentages_secteur['pourcentage'].equals(les_pourcentages_national['pourcentage']) :
+            faire_une_comparaison = False  
+
+        les_pourcentages_secteur.rename(columns={"pourcentage": "pourcentage_region"},inplace=True)               
+        les_pourcentages_secteur['pourcentage']=les_pourcentages_national['pourcentage']
+
+        # Différence  
+        les_pourcentages_secteur["Difference"] = les_pourcentages_secteur["pourcentage_region"] - les_pourcentages_secteur['pourcentage']
+        
+        #  Création du graphique à double axe
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+        # Barres National
+        fig.add_trace(
+            go.Bar(x=les_pourcentages_secteur["classe_age"], y=les_pourcentages_secteur["pourcentage"], 
+                   name="National (%)", marker_color="cornflowerblue"), 
+            secondary_y=False
+        )
+        if faire_une_comparaison:
+            le_titre_graphe = le_titre_graphe + "et écart sous-jacent"
+            # Barres Régional
+            fig.add_trace(
+                go.Bar(x=les_pourcentages_secteur["classe_age"], y=les_pourcentages_secteur["pourcentage_region"], 
+                    name="Secteur (%)", marker_color="cadetblue"),     
+                secondary_y=False
+            )
+            # couleur 2nd axe 
+            la_couleur_snd_axe ="brown"
+
+            # Ligne d'écart
+            fig.add_trace(
+                go.Scatter(x=les_pourcentages_secteur["classe_age"], y=les_pourcentages_secteur["Difference"], 
+                        name="Écart (Zone - Nat)",
+                        text=[f"{val:.2f}" for val in  les_pourcentages_secteur["Difference"]],#, 
+                        textfont=dict(
+                            color=la_couleur_snd_axe, 
+                            size=15,
+                            weight="bold"  # Met en gras pour la lisibilité
+                        ),
+                        textposition="top center", #"middle right" , #"top center", 
+                        mode="lines+markers+text", line=dict(color="grey", width=2)),
+                secondary_y=True,            
+            )
+            
+            # Mise en page
+            fig.update_layout(
+                title_text=le_titre_graphe,
+                barmode="group",
+                height=height_val_p,
+                xaxis_title="Classes d'âge",
+            )
+            
+            fig.update_yaxes(
+                title_text="Différence (points de %)", 
+                showgrid=False,
+                secondary_y=True,
+                title_font_color=la_couleur_snd_axe,  # Couleur du titre de l'axe
+                tickfont_color=la_couleur_snd_axe,    # Couleur des chiffres (graduations)
+                ticks="outside",           # Optionnel : affiche les petits tirets vers l'extérieur
+            )
+
+            fig.update_yaxes(range=[-3, 5], secondary_y=True) # Pour augmenter la marge haute du graphe
+
+            fig.update_yaxes(title_text="Différence (points de %)", secondary_y=True)
+            
+        else:
+            fig.update_layout(
+                title_text=le_titre_graphe,
+                barmode="group",
+                height=height_val_p,
+                xaxis_title="Classes d'âge"
+            )        
+        # Ajout des libelles        
+        fig.update_yaxes(title_text="Pourcentage (%)", secondary_y=False)
+               
+        return fig
 
     def render_graph_score_age(
         self, secteurs_originaires: bool = True, page: int = 0
-    ) -> Tuple[go.Figure(), pd.DataFrame]:
+    ) -> Tuple[go.Figure()]:
         """
         Initialise le traitement du graph
 
@@ -92,7 +209,7 @@ class ClsGraphScoreAge:
                 fig : une figure, graphe
                 df  : dataframe
         """
-        height_val = 580
+        height_val = CST_HEIGHT_VAL #580
 
         vision_ville = False
         if self.origine_secteur == "origine_ville":
@@ -147,9 +264,9 @@ class ClsGraphScoreAge:
 
             fig = px.imshow(
                 df_heatmap,
-                title=le_titre,  # "Classe d'âge des exogènes et des originaires ",
+                title=le_titre,  
                 aspect="auto",
-                color_continuous_scale="Viridis",  # "RdBu_r",
+                color_continuous_scale="Viridis",   
                 labels=dict(color="TAFV"),
                 zmin=0,
                 zmax=1,
@@ -229,7 +346,7 @@ class ClsGraphScoreAge:
                     for s in sectors
                 ],
             )
-            return fig  # , self.class_filtrage.liste_des_df_secteur[page]
+            return fig  #  
         else:
             palette_originaire = [
                 "#FFFDE7",
@@ -360,7 +477,7 @@ class ClsGraphScoreAge:
                 height=height_val,
                 width=500,
             )
-            return fig  # , df_score_ #df_merge_st_top
+            return fig   
 
     def render_graph_score_age_IMD(
         self, secteurs_mobiles: bool = True, page: int = 0, indicateur: str = "IMD"
@@ -377,7 +494,7 @@ class ClsGraphScoreAge:
                 fig : une figure, graphe
                 df  : dataframe
         """
-        height_val = 580
+        height_val = CST_HEIGHT_VAL #580
 
         vision_ville = False
         if self.origine_secteur == "origine_ville":
@@ -432,9 +549,9 @@ class ClsGraphScoreAge:
 
             fig = px.imshow(
                 df_heatmap,
-                title=le_titre, #"IMD et Classe d'âge ",
+                title=le_titre,  
                 aspect="auto",
-                color_continuous_scale="Viridis",  # "RdBu_r",
+                color_continuous_scale="Viridis",  
                 labels=dict(color="IMD"),
                 zmin=-10,
                 zmax=8,

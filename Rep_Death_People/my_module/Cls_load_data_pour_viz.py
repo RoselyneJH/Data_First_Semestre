@@ -357,6 +357,8 @@ class ClsLoadDataPourViz:
         # Vérification du Format :
         df_clean = self.nettoyage_region_departement_latitude(df)
 
+        nb_total_selection = len(df_clean)
+
         df_clean_nan = df_clean.dropna(subset=["nom_departement_deces"])
 
         # copie
@@ -375,8 +377,4 @@ class ClsLoadDataPourViz:
 
         df_person_nais_dece_departement_region = df_clean_nan.copy()
 
-        # Creation des champs classe et taux d'origine :
-        # df_final = self.ajout_distance_classe_age_origine( df_clean )
-
-        # return df_final , df_person_nais_dece_departement_region
-        return df_person_nais_dece_departement_region
+        return df_person_nais_dece_departement_region, nb_total_selection

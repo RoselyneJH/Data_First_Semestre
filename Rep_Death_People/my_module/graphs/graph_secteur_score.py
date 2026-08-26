@@ -6,7 +6,7 @@ from typing import Tuple
 import numpy as np
 
 # Acceder à la classe de filtrage des données
-# from Cls_graphe_score_pour_viz  import ClsScorePourViz
+CST_HEIGHT_VAL = 530
 
 from my_module.graphs.Cls_graphe_score_pour_viz import ClsScorePourViz
 
@@ -69,7 +69,7 @@ class ClsGraphScore:
                 fig : une figure, graphe
                 df  : dataframe
         """
-        height_val = 580
+        height_val = CST_HEIGHT_VAL #580
         texte_sur_secteur_sans_deces_originaire = ""
 
         # graphe :
@@ -298,7 +298,7 @@ class ClsGraphScore:
                 fig : une figure, graphe
                 df  : dataframe
         """
-        height_val = 580
+        height_val = CST_HEIGHT_VAL # 580
         texte_sur_secteur_sans_deces_originaire = ""
         if indicateur == "IMD":
             le_titre = "Mobilité différentielle (IMD)"  #  
