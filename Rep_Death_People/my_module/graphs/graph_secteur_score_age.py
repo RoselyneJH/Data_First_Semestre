@@ -126,7 +126,8 @@ class ClsGraphScoreAge:
 
         # Différence  
         les_pourcentages_secteur["Difference"] = les_pourcentages_secteur["pourcentage_region"] - les_pourcentages_secteur['pourcentage']
-        
+
+
         #  Création du graphique à double axe
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -137,6 +138,10 @@ class ClsGraphScoreAge:
             secondary_y=False
         )
         if faire_une_comparaison:
+            # j'ajuste les bornes max/min de mon graphe afin  de visualiser les ecarts extrèmes
+            val_max = round(les_pourcentages_secteur["Difference"].max()+3.5,2)
+            val_min = round(les_pourcentages_secteur["Difference"].min()-3.5,2)
+            
             le_titre_graphe = le_titre_graphe + "et écart sous-jacent"
             # Barres Régional
             fig.add_trace(
@@ -178,8 +183,9 @@ class ClsGraphScoreAge:
                 tickfont_color=la_couleur_snd_axe,    # Couleur des chiffres (graduations)
                 ticks="outside",           # Optionnel : affiche les petits tirets vers l'extérieur
             )
-
-            fig.update_yaxes(range=[-3, 5], secondary_y=True) # Pour augmenter la marge haute du graphe
+            # Pour augmenter la marge haute du graphe
+            #fig.update_yaxes(range=[-3, 5], secondary_y=True) 
+            fig.update_yaxes(range=[val_min, val_max], secondary_y=True) 
 
             fig.update_yaxes(title_text="Différence (points de %)", secondary_y=True)
             
@@ -195,6 +201,7 @@ class ClsGraphScoreAge:
                
         return fig
 
+    
     def render_graph_score_age(
         self, secteurs_originaires: bool = True, page: int = 0
     ) -> Tuple[go.Figure()]:
@@ -478,7 +485,8 @@ class ClsGraphScoreAge:
                 width=500,
             )
             return fig   
-
+    
+    
     def render_graph_score_age_IMD(
         self, secteurs_mobiles: bool = True, page: int = 0, indicateur: str = "IMD"
     ) -> Tuple[go.Figure(), pd.DataFrame]:
@@ -664,7 +672,7 @@ class ClsGraphScoreAge:
             df_top.loc[df_top["origine"] == "Autres", "top_dep"] = "N"
 
             # creation du dataframe master sur lequel on effectue le graphe
-            df_cette_ville = self.df_fnl[self.df_fnl["ville_deces"] == la_ville]
+            df_cette_ville = self.df_fnl[self.df_fnl["ville_deces"] == la_ville].copy()
 
             labels = ["Urbaine", "Départementale", "Régionale", "Nationale","Internationale"]
             # creation de la colonne mobility

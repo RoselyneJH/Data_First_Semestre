@@ -56,6 +56,7 @@ class ClsGraphScore:
     def nombre_de_page(self):
         return self.pages
 
+    
     def render_graph_score(
         self, page: int = 0
     ) -> Tuple[go.Figure(), pd.DataFrame, str]:
@@ -281,7 +282,7 @@ class ClsGraphScore:
                 width=400,
             )
             return fig, "", self.df_fnl
-
+    
     def render_graph_score_IMD(
         self,
         page: int = 0,

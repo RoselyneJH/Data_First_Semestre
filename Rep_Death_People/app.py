@@ -22,11 +22,11 @@ from my_module.Cls_load_data_pour_viz import ClsLoadDataPourViz
 from pathlib import Path
 
 
-from my_module.graphs.graph_secteur_score import (  # type: ignore
+from my_module.graphs.graph_secteur_score import (  
     ClsGraphScore as graph_score,
 )
 
-from my_module.graphs.graph_secteur_score_age import (  # type: ignore
+from my_module.graphs.graph_secteur_score_age import (   
     ClsGraphScoreAge as graph_score_age,
 )
 
@@ -143,7 +143,7 @@ def load_dataframe() -> pd.DataFrame:
     
     return df_grp, df, nb_deces_hors_france, nb_total_selection
 
-
+@st.cache_data
 def moyenne_ecart_type_national(df_fnl: pd.DataFrame) -> Tuple:
     """
     Args :
@@ -202,7 +202,7 @@ def moyenne_ecart_type_national(df_fnl: pd.DataFrame) -> Tuple:
 
     return df, df_age
 
-
+@st.cache_data
 def recherche_dominant_sur_secteur(
     df_fnl_m: pd.DataFrame, ce_secteur: str, cette_origine_secteur: str
 ) -> Tuple:
@@ -264,7 +264,7 @@ def recherche_dominant_sur_secteur(
         distance_moy,
     )
 
-
+@st.cache_data
 def statistique_sur_secteur(
     df_fnl_e: pd.DataFrame, ce_secteur: str, cette_origine_secteur: str
 ) -> Tuple:
@@ -1175,11 +1175,11 @@ if restitution_des_valeurs:
         )
 
         fig_score_IMD_age_mobile = ce_graph_IMD_age.render_graph_score_age_IMD(
-            False, page=st.session_state.page, indicateur="mobilite_secteur"
+            True, page=st.session_state.page, indicateur="mobilite_secteur"
         )
 
         fig_score_IMD_age_inertie = ce_graph_IMD_age.render_graph_score_age_IMD(
-            True, page=st.session_state.page, indicateur="mobilite_secteur"
+            False, page=st.session_state.page, indicateur="mobilite_secteur"
         )
 
         # fin
