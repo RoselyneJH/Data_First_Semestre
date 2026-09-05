@@ -30,7 +30,7 @@ from my_module.graphs.graph_secteur_score_age import (
     ClsGraphScoreAge as graph_score_age,
 )
 
-# -------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------- 
 #
 
 # Permet de reduire la marge entre side bar et reste de l'écran
@@ -158,7 +158,6 @@ def moyenne_ecart_type_national(df_fnl: pd.DataFrame) -> Tuple:
 
     df_polars = (
         mon_pl.lazy()
-    #    .filter(pl.col("pays_naissance").is_in(["FRANCE"]))
         .select(
             [
                 ((pl.col("distance") + 1).log())
@@ -573,7 +572,6 @@ else:
     df_final_f = df_final_.copy()
     df_fnl_f = df_fnl_.copy()
 
-
 # Slider
 start, end = st.sidebar.slider(
     ":material/deployed_code_account: Âge :",
@@ -691,7 +689,6 @@ if restitution_des_valeurs:
         df_final_sav=df_final
         df_fnl_sav= df_fnl
         # ➜ regroupement par ville
-        #df_list = df_final.query("nom_departement_deces == @departement_selected")
         df_map = (
             df_final.query("nom_departement_deces == @departement_selected").groupby(["nom_departement_deces", "ville_deces"])
             .agg({"lat": "mean", "lon": "mean", "nb_deces": "sum"})
@@ -709,7 +706,6 @@ if restitution_des_valeurs:
 
     elif region_selected != "Toutes les régions":
         # ➜ regroupement par département
-        #df_list = df_final.query("nom_region_deces == @region_selected")
         df_map = (
             df_final.query("nom_region_deces == @region_selected").groupby(["nom_region_deces", "nom_departement_deces"])
             .agg({"lat": "mean", "lon": "mean", "nb_deces": "sum"})
@@ -727,7 +723,6 @@ if restitution_des_valeurs:
 
     else:
         # ➜ regroupement par région
-
         df_map = (
             df_final.groupby(["nom_region_deces"])
             .agg({"lat": "mean", "lon": "mean", "nb_deces": "sum"})
@@ -788,6 +783,7 @@ if restitution_des_valeurs:
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
             st.proportion_nat_age = les_proportions_age.copy(True)
             st.proportion_EXO_nat_age = les_proportions_EXO_age.copy(True)
+            st.session_state.genre = choix_genre
             
 
 
@@ -812,11 +808,14 @@ if restitution_des_valeurs:
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
             st.proportion_nat_age = les_proportions_age.copy(True)
             st.proportion_EXO_nat_age = les_proportions_EXO_age.copy(True)
+            st.session_state.genre = choix_genre
 
     # -------------------------------------------------------------------------------------
     # PAGINATION
 
-    ce_graph_TAFV = graph_score(df_fnl_m, nom_secteur, origine_secteur)
+    ce_graph_TAFV = graph_score(df_fnl_m, nom_secteur, origine_secteur,
+                                st.session_state.ecart_type_national.loc[0],
+                                st.session_state.moyenne_nationale.loc[0])
 
     # je fais apparaitre uniquement dans une vue nat, region ou departement
     if origine_secteur != "origine_ville":
@@ -1105,10 +1104,12 @@ if restitution_des_valeurs:
             st.caption("Distance med.* = Distance médiane ")
 
             ce_graph_proportion_age = graph_score_age(df_fnl_m, nom_secteur, origine_secteur)
+            
             fig_pourcentage = ce_graph_proportion_age.render_graph_pourcentage_age(les_proportions_age,
             st.proportion_nat_age)
 
             ce_graph_proportion_EXO_age = graph_score_age(df_fnl_m, nom_secteur, origine_secteur)
+            
             fig_pourcentage_EXO = ce_graph_proportion_EXO_age.render_graph_pourcentage_age(les_proportions_EXO_age,
             st.proportion_EXO_nat_age,"exogene")            
 
@@ -1141,7 +1142,7 @@ if restitution_des_valeurs:
             page=st.session_state.page
         )
         # Instancie la classe
-        ce_graph_TAFV_age = graph_score_age(df_fnl_m, nom_secteur, origine_secteur)
+        ce_graph_TAFV_age = graph_score_age(df_fnl_m, nom_secteur, origine_secteur,)
 
         fig_score_age = ce_graph_TAFV_age.render_graph_score_age(
             page=st.session_state.page
@@ -1157,7 +1158,7 @@ if restitution_des_valeurs:
             nom_secteur,
             origine_secteur,
             st.session_state.ecart_type_national.loc[0],
-            st.session_state.moyenne_nationale.loc[0],
+            st.session_state.moyenne_nationale.loc[0], # rose
         )
 
         fig_score_IMD, message_score_, df_score_IMD = (
