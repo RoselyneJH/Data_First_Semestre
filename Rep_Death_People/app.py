@@ -381,6 +381,57 @@ def statistique_sur_secteur(
         les_proportions_age_EXO,
     )
 
+def quel_est_le_message_info(ind_tafv: str, ind_imd: str, la_classe:graph_score ):
+    '''
+    Permet de comprendre comment typé le secteur, quelles sont les caractéristiques
+    Args :
+        tafv dans le secteur
+        imd  dans le secteur
+    Return :
+        restitue un libelle issu d'un calcul   
+    '''
+    # Il faut convertir :
+    ind_tafv = float(ind_tafv)
+    ind_imd = float(ind_imd)
+
+    if ind_tafv < 0.5:    # SECTEUR PLUTOT EXOGENE
+        if ind_tafv < 0.3:
+            pre_libelle = "Secteur très attractif pour les exogènes"
+        else:
+            pre_libelle = "Secteur d'exogènes"
+
+        if ind_imd < 0:   # SECTEUR EXOGENE-MOBILE
+            lib = pre_libelle +" et une mobilité plus forte que la moyenne nationale"
+        elif ind_imd == 0:# SECTEUR EXOGENE-NEUTRE
+            lib = pre_libelle + " et une mobilité comparable à la moyenne nationale"
+        else:             # SECTEUR EXOGENE-STATIQUE
+            lib = pre_libelle +" et une mobilité faible par rapport à la moyenne nationale"
+    #---------------------------------------------------
+    elif ind_tafv ==0:    # SECTEUR EQUILIBRE
+        if ind_imd < 0:   # SECTEUR EQUILIBRE-MOBILE
+            lib = "Secteur équilibré avec une mobilité plus forte que la moyenne nationale"
+        elif ind_imd == 0:# SECTEUR EQUILIBRE-NEUTRE
+            lib = "Secteur équilibré avec une mobilité comparable à la moyenne nationale"
+        else:             # SECTEUR EQUILIBRE-STATIQUE
+            lib = "Secteur équilibré avec une mobilité faible par rapport à la moyenne nationale"
+    #---------------------------------------------------
+    else:                 # SECTEUR PLUTOT ORIGINAIRE # ind_tafv > 0.5
+        if ind_tafv > 0.8:
+            pre_libelle = "Secteur avec beaucoup d'originaires (ancrage)"
+        else:
+            pre_libelle = "Secteur d'originaires"
+
+        if ind_imd < 0:   # SECTEUR ORIGINAIRE-MOBILE
+            lib = pre_libelle +" et une mobilité plus forte que la moyenne nationale"
+        elif ind_imd == 0:# SECTEUR ORIGINAIRE-NEUTRE
+            lib = pre_libelle +" et une mobilité comparable à la moyenne nationale"
+        else:             # SECTEUR ORIGINAIRE-STATIQUE
+            lib = pre_libelle +" et une mobilité faible par rapport à la moyenne nationale"
+    #---------------------------------------------------
+    return lib
+    
+
+    
 
 # Récupération des regions et départements
 geojson_regions, geojson_departements = load_geojsons()
@@ -399,7 +450,7 @@ image_path_paysage = BASE_DIR / "assets" / "Paysage.svg"
 
 # Le titre
 st.title("Dynamiques et attractivités des territoires ")
-st.header("Insights pour assurances, société industrielle et politiques publiques")
+st.header("Insights pour sociétés de service et politiques publiques")
 st.subheader("Trajectoires de vie des défunts en France en 2024")
 
 # --- Fond d'écran ---
@@ -916,40 +967,42 @@ if restitution_des_valeurs:
     with tabMain:
         with st.container(border=True):
             st.subheader("Objectifs et KPI :")
-            col_obj,col_description_kpi = st.columns([5.0,4.2], vertical_alignment="top")
+            col_obj,col_description_kpi = st.columns([5.4,4.2], vertical_alignment="top")
             with col_obj:
                 with st.container(border=True):
                     st.markdown(
                     """
                     <div style="background-color: #ADD8E6; ">
-                    🎯 Cette présentation consiste à distinguer deux types de territoires : ceux qui gagnent des seniors (Attractivité)
-                    et ceux qui y restent pour leur vie (Ancrage).<br>\n
-                    
-                    Cette information est importante pour l'organisation et la gestion du territoire, la compréhension des besoins de 
-                    la population ciblée (protection sociale, attentes économiques, spécificités culturelles..).<br> 
+                    🎯 L'objectif de cette présentation consiste à distinguer deux types de territoires : ceux qui gagnent des seniors (secteur attractif)
+                    de ceux qui y restent pour leur vie (secteur d'ancrage).<br>
+                    <br>
+                    Cette information est importante pour l'organisation et la gestion du territoire, la production de services des 
+                    populations ciblées (protection sociale, attentes économiques, spécificités culturelles..).<br> 
                     <br>
                     ➡️ Les territoires avec beaucoup de seniors indiquent potentiellement : <br>
                     <b>-</b> Des transferts d’épargne et d’immobilier <br>
                     <b>-</b> Une activation future de contrats d’assurance-vie <br>
                     <br>
-                    ➡️ Les territoires avec beaucoup d'exogène soulignent : <br>
+                    ➡️ Les territoires avec beaucoup d'exogènes séniors soulignent : <br>
                     <b>-</b> La présence d'infrastructure medicales, d'hepad <br>
                     <b>-</b> Une meilleure qualité de vie <br>
                     <br>
-                    ➡️ Les territoires avec beaucoup d'originaires soulignent : <br>
+                    ➡️ Les territoires avec beaucoup d'originaires séniors soulignent : <br>
                     <b>-</b> Un fort attachement à son territoire, une identité très marquée qui peut 
                     s'appuyer sur des habitudes culturelles ou de consommation <br>
                     <br>
                     ➡️ La temporalité des decès permet d'identifier : <br>
-                    <b>-</b> Les spécificités des trajectoires de vie <br>
+                    <b>-</b> Les spécificités des trajectoires de vie 
+                    <br>
                     </div>                
                     """,
                     unsafe_allow_html=True,
                 )
+                    
             with col_description_kpi:
                 with st.container(border=True):
                     
-                    st.write(":material/keyboard_double_arrow_right: Taux d'ancrage de fin de vie")
+                    st.write(":material/expand_circle_down: Taux d'ancrage de fin de vie")
                     st.markdown(
                         """
                         <div style="background-color: #ADD8E6; ">
@@ -974,7 +1027,8 @@ if restitution_des_valeurs:
                             """,
                             unsafe_allow_html=True,
                     )
-                    st.write(":material/keyboard_double_arrow_right: Indice de mobilité différentielle")
+                        #<s    keyboard_double_arrow_right
+                    st.write(":material/expand_circle_down: Indice de mobilité différentielle")
                     st.markdown(
                         """
                         <div style="background-color: #ADD8E6; ">
@@ -1003,11 +1057,11 @@ if restitution_des_valeurs:
                             unsafe_allow_html=True,
                         )
                     with st.container(border=True):
-                        nb_deces_hors_france = int(nb_deces_hors_france)
-                        proportion_hf = round(nb_deces_hors_france*100/ nb_total_selection,0)    
+                        nb_deces_hors_france_presentation =f"{nb_deces_hors_france:,}".replace(",", " ").replace(".0", " ")
+                        proportion_hf = round((nb_deces_hors_france)*100/ nb_total_selection,0)    
                         st.write(f"""
-                                Pour cette année, il y a eu des décès à l'étranger :
-                                - Nombre     : {nb_deces_hors_france}
+                                :material/info: A noter que les décès à l'étranger sont exclus de cette analyse :
+                                - Nombre     : {nb_deces_hors_france_presentation}
                                 - Proportion : {proportion_hf} %
                                 """)
 
@@ -1158,7 +1212,7 @@ if restitution_des_valeurs:
             nom_secteur,
             origine_secteur,
             st.session_state.ecart_type_national.loc[0],
-            st.session_state.moyenne_nationale.loc[0], # rose
+            st.session_state.moyenne_nationale.loc[0], #  
         )
 
         fig_score_IMD, message_score_, df_score_IMD = (
@@ -1183,32 +1237,21 @@ if restitution_des_valeurs:
             False, page=st.session_state.page, indicateur="mobilite_secteur"
         )
 
-        # fin
-
         with st.container(border=True):
-            col_score_1, col_x, col_score_2 = st.columns([4.9, 0.6, 4.7])
-            with col_score_1:
-                with st.container(border=False):                    
-                    col_ind_tafv, _ = st.columns(
-                        [0.5, 0.5]
-                    )  #
-                    col_ind_tafv.metric(
-                        "TAFV", ind_atfv
-                    )  # 
-                    
-                    
-            with col_score_2:
-                with st.container(border=False):
-                    col_ind_imd, _ = st.columns([0.4, 0.6])  #
-                    col_ind_imd.metric("IMD", ind_imd)  #
-                    
+                 
+            col_ind_tafv, col_ind_imd, col_message = st.columns(
+                [0.5, 0.5,5.0])  #
+            
+            col_ind_tafv.metric("TAFV", ind_atfv,border=True )  
+            col_ind_imd.metric("IMD", ind_imd,border=True )
+
+            with col_message:
+                le_message = quel_est_le_message_info(ind_atfv,ind_imd,ce_graph_IMD)
+                st.info(le_message)
+                
 
             with st.container(border=True):
                 # Préparation de l'alignement des graphes 
-                # Colonnes côte à côte
-                # Mettre un espace entre les différents conteneurs
-                #col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9, 0.6, 4.7])
-
                 col_TAFV, col_separateur, col_IMD = st.columns([4.9, 0.6, 4.7])
                 with col_TAFV:
 
@@ -1281,16 +1324,11 @@ if restitution_des_valeurs:
                                 width="stretch",
                                 key="Graphe_IMD",
                             )
-
-
                 # message de suppression d'éventuel secteur sans intéret
                 st.text(message_score)
 
             with st.container(border=True):
-                # col_TAFV, col_separateur, col_age_TAFV = st.columns([4.9,0.7,4.6])
-                #col_IMD, col_separateur, col_age_IMD = st.columns(
-                #    [4.9, 0.6, 4.7]
-                #) 
+
                 col_age_TAFV, col_separateur, col_age_IMD = st.columns(
                     [4.9, 0.6, 4.7]
                 )

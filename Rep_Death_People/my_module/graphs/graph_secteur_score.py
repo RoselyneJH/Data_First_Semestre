@@ -1,7 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
-import polars as pl
+#import polars as pl
 from typing import Tuple
 import numpy as np
 
@@ -30,7 +30,6 @@ class ClsGraphScore:
             cette_origine : origine
             ecart_type national si le score selectionné est la distance (IMD)
             moyenne nationale si le score selectionné est la distance (IMD)
-
 
         """
         self.df_fnl = df_fnl
@@ -160,8 +159,7 @@ class ClsGraphScore:
                     font=dict(size=12, color="blue"),
                 )
 
-                fig.add_vline(x=0.3, line_dash="dash", line_color="white")
-                fig.add_vline(x=0.6, line_dash="dash", line_color="white")
+                fig.add_vline(x=0.5, line_dash="dash", line_color="white")
 
                 fig.update_layout(
                     xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
@@ -177,6 +175,8 @@ class ClsGraphScore:
                     ),  # permet d'avoir même hauteur de graphe
                     title_x=0.28,  # centre le titre du graphique
                 )
+                # afin de mieux voir les points pour lesquels nb originaire = 0  
+                fig.update_xaxes(range=[-0.05, 1]) 
 
                 return fig, texte_sur_secteur_sans_deces_originaire, df_score
             else:
@@ -237,8 +237,7 @@ class ClsGraphScore:
                     font=dict(size=14, color="blue"),
                 )
 
-                fig.add_vline(x=0.3, line_dash="dash", line_color="white")
-                fig.add_vline(x=0.6, line_dash="dash", line_color="white")
+                fig.add_vline(x=0.5, line_dash="dash", line_color="white")
 
                 fig.update_layout(
                     xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
@@ -254,6 +253,8 @@ class ClsGraphScore:
                     ),  # permet d'avoir même hauteur de graphe
                     title_x=0.2,  # centre le titre du graphique
                 )
+                        
+                #fig.update_xaxes(range=[-1.2, 1.2], secondary_y=False) 
 
                 return fig, texte_sur_secteur_sans_deces_originaire, self.df_score
 
@@ -392,7 +393,8 @@ class ClsGraphScore:
                     font=dict(size=12, color="blue"),
                 )
 
-                fig.add_vline(x=-0, line_dash="dash", line_color="white")
+                fig.add_vline(x=0, line_dash="dash", line_color="white")
+
                 fig.update_layout(
                     xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
                     title=le_titre,  # "Mobilité différentielle (IMD)"

@@ -23,10 +23,7 @@ class ClsGraphScoreAge:
         nom_secteur: str,
         origine_secteur: str,
         le_df_ecart_type_moy_age: pd.DataFrame = None,
-        distance_dep_inf: float = 2.0,
-        distance_dep_sup: float = 30.0,
-        distance_nat_sup: float = 17235.0,
-    ):
+       ):
         """
         Initialise le graphe pour une meilleur pagination
 
@@ -44,11 +41,6 @@ class ClsGraphScoreAge:
         # Comme le dataframe est ecourté la position de cette colonne
         # change :
         self.pos_col_ville_deces =self.df_fnl.columns.get_loc("ville_deces")
-
-        self.distance_nat_inf = 0
-        self.distance_dep_inf = distance_dep_inf  # 200
-        self.distance_dep_sup = distance_dep_sup  # 600
-        self.distance_nat_sup = distance_nat_sup  # 2000
 
         self.class_filtrage = ClsScorePourViz(
             self.df_fnl,
@@ -99,15 +91,6 @@ class ClsGraphScoreAge:
                 le graphe
                 restitue les différences des pourcentages zone vs nation
 
-             fig = px.bar(
-                les_pourcentages_secteur,
-                x="classe_age",
-                y="pourcentage_region",
-                #color="Type",
-                #color_discrete_sequence=palette,  # 
-                #barmode="group",
-                title="Pourcentage",
-            )
         '''
         height_val_p = 270
         # titre du graphe :
@@ -131,16 +114,39 @@ class ClsGraphScoreAge:
         #  Création du graphique à double axe
         fig = make_subplots(specs=[[{"secondary_y": True}]])
 
+        valeurs_x = les_pourcentages_secteur["classe_age"]
+        valeurs_y = les_pourcentages_secteur["pourcentage"]
+        valeur_max = les_pourcentages_secteur["pourcentage"].max()
+        
+        # Création de la liste conditionnelle pour le texte
+        # On affiche pas les valeurs si faire_une_comparaison =False, sinon on affichage 
+        textes_conditionnels = [f"{v:.2f}" if faire_une_comparaison==False else "" for v in valeurs_y]
+
+        # Création de la liste conditionnelle pour le max Si c'est le max -> rouge ("crimson"), 
+        # sinon -> gris foncé ("#4d4d4d")
+        couleurs_texte = ["crimson" if v == valeur_max else "#1c1a1a" for v in valeurs_y]
+
         # Barres National
         fig.add_trace(
-            go.Bar(x=les_pourcentages_secteur["classe_age"], y=les_pourcentages_secteur["pourcentage"], 
-                   name="National (%)", marker_color="cornflowerblue"), 
+            go.Bar(x=valeurs_x, 
+                y=valeurs_y, 
+                name="National (%)", 
+                marker_color="cornflowerblue",
+                text=textes_conditionnels,
+                textposition='outside',
+                # Personnalisation de la police des annotations
+                textfont=dict(
+                    color=couleurs_texte,  # On applique notre liste de couleurs
+                    #size=13,               # Taille de la police
+                    #family="Arial-Bold"    # Style de police en gras
+                    )
+                ), 
             secondary_y=False
         )
         if faire_une_comparaison:
             # j'ajuste les bornes max/min de mon graphe afin  de visualiser les ecarts extrèmes
-            val_max = round(les_pourcentages_secteur["Difference"].max()+3.5,2)
-            val_min = round(les_pourcentages_secteur["Difference"].min()-3.5,2)
+            val_max = round(les_pourcentages_secteur["Difference"].max()+5.0,2)
+            val_min = round(les_pourcentages_secteur["Difference"].min()-4.0,2)
             
             le_titre_graphe = le_titre_graphe + "et écart sous-jacent"
             # Barres Régional
@@ -162,7 +168,7 @@ class ClsGraphScoreAge:
                             size=15,
                             weight="bold"  # Met en gras pour la lisibilité
                         ),
-                        textposition="top center", #"middle right" , #"top center", 
+                        textposition="top center",  
                         mode="lines+markers+text", line=dict(color="grey", width=2)),
                 secondary_y=True,            
             )
@@ -181,7 +187,7 @@ class ClsGraphScoreAge:
                 secondary_y=True,
                 title_font_color=la_couleur_snd_axe,  # Couleur du titre de l'axe
                 tickfont_color=la_couleur_snd_axe,    # Couleur des chiffres (graduations)
-                ticks="outside",           # Optionnel : affiche les petits tirets vers l'extérieur
+                ticks="outside",                      # Optionnel : affiche les petits tirets vers l'extérieur
             )
             # Pour augmenter la marge haute du graphe
             #fig.update_yaxes(range=[-3, 5], secondary_y=True) 
@@ -195,7 +201,8 @@ class ClsGraphScoreAge:
                 barmode="group",
                 height=height_val_p,
                 xaxis_title="Classes d'âge"
-            )        
+            ) 
+            fig.update_layout(yaxis=dict(range=[0, max(valeurs_y) * 1.20]))    # pour ne pas couper les labels    
         # Ajout des libelles        
         fig.update_yaxes(title_text="Pourcentage (%)", secondary_y=False)
                
@@ -214,8 +221,9 @@ class ClsGraphScoreAge:
 
             Return:
                 fig : une figure, graphe
-                df  : dataframe
+        
         """
+
         height_val = CST_HEIGHT_VAL #580
 
         vision_ville = False
@@ -495,7 +503,7 @@ class ClsGraphScoreAge:
 
             Args:
                 page à lire
-                secteurs_mobiles               : affiche les mobiles ou inertie
+                secteurs_mobiles  : affiche les mobiles ou inertie
                 choix de l'indicateur à visualiser : ici IMD
 
             Return:

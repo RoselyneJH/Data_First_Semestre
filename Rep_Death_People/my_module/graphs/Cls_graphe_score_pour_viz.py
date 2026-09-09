@@ -132,7 +132,8 @@ class ClsScorePourViz:
             )
             mon_pl = mon_pl.with_columns(
                 pl.lit(self.distance_ecart_type_national).alias("std_distance")
-            )
+            )    
+        
         
         # FILTRAGE/GROUPBY
         pl_cumul_secteur = (
@@ -243,9 +244,7 @@ class ClsScorePourViz:
         reste = (
             1 if (df_cumul_secteur_["rang_deces"].max() % PAGE_SIZE) > 0 else 0
         )  # opérateur ternaire
-        # C'est le script que j'aurais du mettre en place mais je préfère plafonner :
-        # df_cumul_secteur_["rang_deces"].max()//PAGE_SIZE + reste # <= c'est le alcul du nombre de pages
-
+        
         # identifier le nombre de page max
         page_max = df_cumul_secteur_["rang_deces"].max() // PAGE_SIZE + reste
 
@@ -336,7 +335,7 @@ class ClsScorePourViz:
         """
         niveau = "nom_departement_naissance"
 
-        mon_pl = pl.DataFrame(df)
+        #mon_pl = pl.DataFrame(df)
 
         top, nb_orig, df_non_orig = self.identification_top_treemap(df, la_ville)
         # Recupérer la liste des départements de naissance trouvés
@@ -347,7 +346,7 @@ class ClsScorePourViz:
         # 4️⃣ Calcul "Autres"
         total_non_orig = df_non_orig.select(
             pl.col("nb").sum().alias("max_count")
-        ).item()  # df_non_orig.height
+        ).item()  # 
         autres = total_non_orig - top["somme"].sum()
         # 5️⃣ Construction du dataframe final (Polars)
 
