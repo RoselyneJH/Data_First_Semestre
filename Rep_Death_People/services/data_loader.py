@@ -43,9 +43,9 @@ def load_dataframe()-> pd.DataFrame:
     )
     st.write("🔄 Étape 2.1.2 : dans load_dataframe Tentative d'Extraction...")
     df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
-    st.write("🔄 Étape 2.1.3 : dans load_dataframe récupération Df...")
+    st.write("🔄 Étape 2.1.3 : dans load_dataframe Tentative de récupération Df...")
     df = my_class.creation_classe_age(df_source)
-    
+    st.write("🔄 Étape 2.1.4 : dans load_dataframe récupération Df...")
     # Nombre de décès hors France
     nb_deces_hors_france = df["nb_hors_france"].mean() 
 
