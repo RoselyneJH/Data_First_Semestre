@@ -34,16 +34,16 @@ def load_dataframe()-> pd.DataFrame:
         mode = "cloud"
     else:
         mode = "local"
-    
+    st.write("🔄 Étape 2.1.1 : dans load_dataframe Instance DatapourViz...")
     # Chargement des données
     my_class = ClsLoadDataPourViz(
         path_racine=str(Path.cwd()),
         choix_system="polars",
         mode=mode,
     )
-
+    st.write("🔄 Étape 2.1.2 : dans load_dataframe Tentative d'Extraction...")
     df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
-    
+    st.write("🔄 Étape 2.1.3 : dans load_dataframe récupération Df...")
     df = my_class.creation_classe_age(df_source)
     
     # Nombre de décès hors France
