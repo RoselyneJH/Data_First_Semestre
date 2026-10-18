@@ -21,9 +21,9 @@ st.set_page_config(
 #apply_styles()
 
 # Le titre
-st.title("Dynamiques et attractivités des territoires ")
+st.title("Trajectoires de vie : dynamiques et attractivités territoriales en 2024")
 st.header("Insights pour sociétés de service et politiques publiques")
-st.subheader("Trajectoires de vie des défunts en France en 2024")
+#st.subheader("Trajectoires de vie des défunts en France en 2024")
 
 # -------------------------------------------------------------------------------------
 st.write("Auteur : R.Jean / Source : https://www.insee.fr/fr/statistiques")
@@ -35,7 +35,7 @@ st.set_page_config(
     layout="wide",
 )
 
-
+st.write("🔄 Étape 1 : Le script démarre...")
 page_analyse = st.Page(
     "pages/1_📊_Analyse_territoriale.py",
     title="Analyse territoriale",

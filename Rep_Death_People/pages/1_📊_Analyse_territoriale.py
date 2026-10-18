@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import plotly.express as px
+#import plotly.express as px
 import streamlit as st
 import pandas as pd
 from typing import List, Dict, Union, Tuple
@@ -253,8 +253,9 @@ apply_styles()
 # CHARGEMENT DES DONNEES
 # ==========================
 # Recupération des datas provenant de la Bdd
+st.write("🔄 Étape 2.1 : Tentative de chargement des données...")
 df_grp, df, nb_deces_hors_france,nb_total_selection  = load_dataframe()
-
+st.write("🔄 Étape 2.2 : Chargement des données...")
 geojson_regions, geojson_departements = load_geojsons()
 
 # ==========================
