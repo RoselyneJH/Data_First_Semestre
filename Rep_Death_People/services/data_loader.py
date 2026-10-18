@@ -22,19 +22,19 @@ def load_dataframe()-> pd.DataFrame:
             - nb deces hors france
             - nb total décès
     """
-    print("Étape 0 load_dataframe")
+    
     # Chargement des secrets
     for key, value in st.secrets.items():
         os.environ[key] = str(value)
 
     # Détection de l'environnement
     host = os.environ.get("DB_HOST", "")
-    print("Étape 1 host = os.environ.get")
+    
     if "supabase" in host:
         mode = "cloud"
     else:
         mode = "local"
-    print("Étape 2 Mode Identifié")
+    
     # Chargement des données
     my_class = ClsLoadDataPourViz(
         path_racine=str(Path.cwd()),
@@ -43,9 +43,9 @@ def load_dataframe()-> pd.DataFrame:
     )
 
     df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
-    print("Étape 3 Instance ExtractionDataTableDeathPeopleView")
+    
     df = my_class.creation_classe_age(df_source)
-    print("Étape 4 Recuperation dataframe")
+    
     # Nombre de décès hors France
     nb_deces_hors_france = df["nb_hors_france"].mean() 
 
