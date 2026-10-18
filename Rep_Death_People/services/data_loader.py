@@ -41,6 +41,8 @@ def load_dataframe()-> pd.DataFrame:
         choix_system="polars",
         mode=mode,
     )
+    print("Je vérifie les données d'appel de ma classe : ",path_racine,choix_system )
+
     st.write("🔄 Étape 2.1.2 : dans load_dataframe Tentative d'Extraction...")
     df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
     st.write("🔄 Étape 2.1.3 : dans load_dataframe Tentative de récupération Df...")
