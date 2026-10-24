@@ -19,7 +19,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base
 
 import numpy as np
-import streamlit as st #testR
+ 
 from functools import reduce
 
 from my_module.Connexion_Bdd import ConnexionBdd
@@ -310,6 +310,7 @@ class ClsLoadDataPourViz:
         :param conn_str: La chaîne de connexion (ex: 'sqlite:///mydb.sqlite').
         :return: Un DataFrame Polars ou None si erreur.
         """
+         
 
         try:
             # Il faut préparer la chaine de connexion pour ConnectorX
@@ -343,11 +344,11 @@ class ClsLoadDataPourViz:
         la_query = la_query + ") maitre, (SELECT count(*) as nb_deces FROM death_people_view "
         la_query = la_query + "WHERE pays_deces <> 'FRANCE' or "
         la_query = la_query + "pays_deces is null) hors_france"
-
+         
         df_polars = self.select_with_polars(self.url_Bdd, la_query)
-
+         
         df = df_polars.to_pandas()
-        st.write("🔄 Sous Étape 2.1.2 dans ExtractionDataTableDeathPeopleView - Le df : ",df.info() )
+         
         print("la taille ",df.info())
         # Vérification du Format :
         df_clean = self.nettoyage_region_departement_latitude(df)

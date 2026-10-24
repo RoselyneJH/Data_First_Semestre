@@ -22,19 +22,6 @@ def load_dataframe()-> pd.DataFrame:
             - nb deces hors france
             - nb total décès
     """
-    import sys
-    import os
-
-    print("DIAG 1 : le script démarre", flush=True)
-
-    st.set_page_config(page_title="Diagnostic")
-    st.title("Diagnostic Streamlit")
-    st.success("Le script Python s'exécute correctement.")
-
-    st.write("Python :", sys.version)
-    st.write("Répertoire courant :", os.getcwd())
-
-    print("DIAG 2 : interface créée", flush=True)
 
     # Chargement des secrets
     for key, value in st.secrets.items():
@@ -54,12 +41,11 @@ def load_dataframe()-> pd.DataFrame:
         choix_system="polars",
         mode=mode,
     )
-    
-    st.write("🔄 Étape 1.1 : données d'appel de ma classe Tentative d'Extraction...",str(Path.cwd()))    
+      
     df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
-    st.write("🔄 Étape 1.2 : dans load_dataframe Tentative de récupération Df...")
+    
     df = my_class.creation_classe_age(df_source)
-    st.write("🔄 Étape 1.3 : dans load_dataframe récupération Df...")
+    
     # Nombre de décès hors France
     nb_deces_hors_france = df["nb_hors_france"].mean() 
 
