@@ -34,7 +34,7 @@ def load_dataframe()-> pd.DataFrame:
         mode = "cloud"
     else:
         mode = "local"
-    st.write("🔄 Étape 2.1.0 : dans load_dataframe Instance DatapourViz...")
+     
     # Chargement des données
     my_class = ClsLoadDataPourViz(
         path_racine=str(Path.cwd()),
@@ -42,12 +42,11 @@ def load_dataframe()-> pd.DataFrame:
         mode=mode,
     )
     
-    st.write("🔄 Étape 2.1.1 : données d'appel de ma classe Tentative d'Extraction...",str(Path.cwd()))
-    
+    st.write("🔄 Étape 1.1 : données d'appel de ma classe Tentative d'Extraction...",str(Path.cwd()))    
     df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
-    st.write("🔄 Étape 2.1.2 : dans load_dataframe Tentative de récupération Df...")
+    st.write("🔄 Étape 1.2 : dans load_dataframe Tentative de récupération Df...")
     df = my_class.creation_classe_age(df_source)
-    st.write("🔄 Étape 2.1.3 : dans load_dataframe récupération Df...")
+    st.write("🔄 Étape 1.3 : dans load_dataframe récupération Df...")
     # Nombre de décès hors France
     nb_deces_hors_france = df["nb_hors_france"].mean() 
 
