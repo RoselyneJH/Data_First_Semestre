@@ -6,7 +6,17 @@ import polars as pl
 import streamlit as st
 
 from my_module.Cls_load_data_pour_viz import ClsLoadDataPourViz
+# ---- TEST RJ
+import time
+# import streamlit as st
 
+def diag(message):
+    print(
+        f"[DIAG {time.strftime('%H:%M:%S')}] {message}",
+        flush=True
+    )
+    st.write(f"🔎 {message}")
+# ---- TEST RJ
 
 @st.cache_data
 def load_dataframe()-> pd.DataFrame:
@@ -41,9 +51,10 @@ def load_dataframe()-> pd.DataFrame:
         choix_system="polars",
         mode=mode,
     )
-      
-    df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
     
+    diag("1 - Début du script")
+    df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
+    diag("2 - ExtractionDataTableDeathPeopleView terminé ")
     df = my_class.creation_classe_age(df_source)
     
     # Nombre de décès hors France
