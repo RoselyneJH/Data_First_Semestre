@@ -254,6 +254,22 @@ apply_styles()
 # ==========================
 # Recupération des datas provenant de la Bdd
 st.write("🔄 Étape 2.1 : Tentative de chargement des données...")
+
+import sys
+import os
+
+print("DIAG 1 : le script démarre", flush=True)
+
+st.set_page_config(page_title="Diagnostic")
+st.title("Diagnostic Streamlit")
+st.success("Le script Python s'exécute correctement.")
+
+st.write("Python :", sys.version)
+st.write("Répertoire courant :", os.getcwd())
+
+print("DIAG 2 : interface créée", flush=True)
+
+
 df_grp, df, nb_deces_hors_france,nb_total_selection  = load_dataframe()
 st.write("🔄 Étape 2.2 : Chargement des données...")
 geojson_regions, geojson_departements = load_geojsons()
