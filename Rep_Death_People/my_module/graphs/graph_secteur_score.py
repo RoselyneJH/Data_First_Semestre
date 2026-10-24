@@ -71,7 +71,7 @@ class ClsGraphScore:
         """
         height_val = CST_HEIGHT_VAL #580
         texte_sur_secteur_sans_deces_originaire = ""
-
+        
         # graphe :
         # Alors secteur différent d'une ville ou bien departement = region (df_score=1)
         # vue region, departement, sinon graphe suivant :
@@ -105,7 +105,7 @@ class ClsGraphScore:
                 fig.add_scatter(
                     y=df_score_[self.nom_secteur],
                     x=df_score_["TAFV"],
-                    text=df_score_[self.nom_secteur],  # colonne à afficher
+                    text=df_score_["rang_TAFV"] , # colonne à afficher
                     hoverinfo="text+x+y",  # ce qui apparaît
                     mode="markers",
                     marker=dict(
@@ -183,7 +183,7 @@ class ClsGraphScore:
                 fig.add_scatter(
                     y=df_score[self.nom_secteur],
                     x=df_score["TAFV"],
-                    text=df_score[self.nom_secteur],  # colonne à afficher
+                    text=df_score_["rang_TAFV"] ,  # colonne à afficher
                     hoverinfo="text+x+y",  # ce qui apparaît
                     mode="markers",
                     marker=dict(
@@ -258,8 +258,7 @@ class ClsGraphScore:
 
                 return fig, texte_sur_secteur_sans_deces_originaire, self.df_score
 
-        else:
-            
+        else:            
             df_plot = self.class_filtrage.preparation_treemap(
                 self.df_fnl, self.df_fnl.iloc[0, self.pos_col_ville_deces]
             )
@@ -338,7 +337,7 @@ class ClsGraphScore:
                 fig.add_scatter(
                     y=df_score_[self.nom_secteur],
                     x=df_score_[indicateur],
-                    text=df_score_[self.nom_secteur],  # colonne à afficher
+                    text=df_score_["rang_IMD"] ,#df_score_[self.nom_secteur],  # colonne à afficher
                     hoverinfo="text+x+y",  # ce qui apparaît
                     mode="markers",
                     marker=dict(

@@ -18,14 +18,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base
 
-# import missingno as msno
-
-#import matplotlib.pyplot as plt
 import numpy as np
-#import seaborn as sns
-
-#import matplotlib.ticker as ticker
-
+import streamlit as st #testR
 from functools import reduce
 
 from my_module.Connexion_Bdd import ConnexionBdd
@@ -320,9 +314,9 @@ class ClsLoadDataPourViz:
         try:
             # Il faut préparer la chaine de connexion pour ConnectorX
             #nouveau_conn_str = conn_str.replace("+psycopg", "")
-            #propre_conn_str = nouveau_conn_str + "?sslmode=disable"
+            # propre_conn_str = nouveau_conn_str + "?sslmode=disable"
             # On gagne 4*fois plus de temps avec polars
-            #df = pl.read_database_uri(la_query, propre_conn_str)
+            # df = pl.read_database_uri(la_query, propre_conn_str)
             df = pl.read_database_uri(la_query, self.url_Bdd)
             return df
 
@@ -353,7 +347,8 @@ class ClsLoadDataPourViz:
         df_polars = self.select_with_polars(self.url_Bdd, la_query)
 
         df = df_polars.to_pandas()
-
+        st.write("🔄 Sous Étape 2.1.2 dans ExtractionDataTableDeathPeopleView - Le df : ",df.info() )
+        print("la taille ",df.info())
         # Vérification du Format :
         df_clean = self.nettoyage_region_departement_latitude(df)
 

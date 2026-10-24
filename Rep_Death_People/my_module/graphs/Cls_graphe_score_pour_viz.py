@@ -138,7 +138,6 @@ class ClsScorePourViz:
         # FILTRAGE/GROUPBY
         pl_cumul_secteur = (
             mon_pl.lazy()
-            #.filter(pl.col("pays_naissance").is_in(["FRANCE"]))  # !
             .group_by(liste_a_traiter)
             .agg(
                 [
@@ -197,6 +196,19 @@ class ClsScorePourViz:
                     .alias("IMD"),  # indice de mobilité diffe.
                 ]
             )
+            # Rangs
+            .with_columns(
+                [
+                    pl.col("TAFV")
+                    .rank(method="min", descending=True)
+                    .alias("rang_TAFV"),
+
+                    pl.col("IMD")
+                    .rank(method="min", descending=True)
+                    .alias("rang_IMD"),
+                ]
+            )
+
             .collect()
         )
         # En ajoutant la clonne age à ntre dataframe, on perd l'ordre des secteurs,
