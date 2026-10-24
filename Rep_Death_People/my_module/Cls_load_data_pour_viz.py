@@ -25,6 +25,7 @@ from functools import reduce
 from my_module.Connexion_Bdd import ConnexionBdd
 
 import polars as pl
+import time 
  
 ##############################################################################
 #                      CLASSE POUR FLOW VISUALISATION DATA
@@ -348,12 +349,13 @@ class ClsLoadDataPourViz:
         la_query = la_query + ") maitre, (SELECT count(*) as nb_deces FROM death_people_view "
         la_query = la_query + "WHERE pays_deces <> 'FRANCE' or "
         la_query = la_query + "pays_deces is null) hors_france"
-         
+        
+        t = time.perf_counter()
         df_polars = self.select_with_polars(self.url_Bdd, la_query)
-         
+        print(f"select_with_polars chargées en {time.perf_counter() - t:.2f} s") 
         df = df_polars.to_pandas()
+        print(f"df_polars chargées en {time.perf_counter() - t:.2f} s")  
          
-        print("la taille ",df.info())
         # Vérification du Format :
         df_clean = self.nettoyage_region_departement_latitude(df)
 
