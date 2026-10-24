@@ -25,7 +25,7 @@ from functools import reduce
 from my_module.Connexion_Bdd import ConnexionBdd
 
 import polars as pl
-
+ 
 ##############################################################################
 #                      CLASSE POUR FLOW VISUALISATION DATA
 ##############################################################################
@@ -40,6 +40,7 @@ class ClsLoadDataPourViz:
             path_racine : repertoire cible
             engine : moteur d'accès à la bdd
         """
+         
 
         # Instancier la classe d'accès à la base de données
         my_bdd = ConnexionBdd(
@@ -48,6 +49,9 @@ class ClsLoadDataPourViz:
             section="postgresql",
             mode=mode,
         )
+
+        
+
         # Creation de l'Url
         self.url_Bdd = my_bdd.creation_de_chaine_de_connexion(choix_system)
         self.choix_system = choix_system
