@@ -6,7 +6,7 @@
 #                                      IMPORT
 ## --------------------------------------------------------------------------##
 
-from turtle import st
+
 import pandas as pd
 
 from configparser import ConfigParser
