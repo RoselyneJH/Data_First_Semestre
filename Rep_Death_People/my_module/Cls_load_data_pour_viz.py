@@ -26,7 +26,6 @@ from functools import reduce
 from my_module.Connexion_Bdd import ConnexionBdd
 
 import polars as pl
-import time 
  
 ##############################################################################
 #                      CLASSE POUR FLOW VISUALISATION DATA
@@ -316,38 +315,23 @@ class ClsLoadDataPourViz:
         :param conn_str: La chaîne de connexion (ex: 'sqlite:///mydb.sqlite').
         :return: Un DataFrame Polars ou None si erreur.
         """
-        print("select_with_polars URL      "+self.url_Bdd, flush=True)  
-        print("select_with_polars la_query "+la_query, flush=True) 
-        import psycopg2
          
-        conn = psycopg2.connect(self.url_Bdd, connect_timeout=10)
-        t0 = time.perf_counter()
+        import psycopg2
+
+        conn = psycopg2.connect(self.url_Bdd,connect_timeout=10) 
         try:
-            # Il faut préparer la chaine de connexion pour ConnectorX
-            #nouveau_conn_str = conn_str.replace("+psycopg", "")
-            # propre_conn_str = nouveau_conn_str + "?sslmode=disable"
-            # On gagne 4*fois plus de temps avec polars
-            # df = pl.read_database_uri(la_query, propre_conn_str)
-            
+            # psycopg2                        
             df = pl.read_database(la_query, connection=conn)           
-            print(f"read_database en {time.perf_counter() - t0:.2f} s", flush=True)
-            #la_query_="SELECT 1 AS ok"
-            #df = pl.read_database_uri(la_query_, self.url_Bdd)
-            #print("apres read_database_uri  ", flush=True)
             
+            #df = pl.read_database_uri(la_query_, self.url_Bdd)                        
             return df
-        except Exception as e:
-                
-                print(f"erreur en {time.perf_counter() - t0:.2f} s", flush=True)
+        
+        except Exception as e:                
+            print(" Erreur inattendue :", e)
     
         #except pl.exceptions.PolarsError as e:
         #    print("Erreur Polars détectée :", e)
-        #    print("Erreur Polars détectée :"+e, flush=True)
-
-        #except Exception as e:
-        #    print(" Erreur inattendue :", e)
-        #    print(" Erreur inattendue :"+e, flush=True)
-
+        
         return None
 
     def ExtractionDataTableDeathPeopleView(self) -> pd.DataFrame:
@@ -366,15 +350,9 @@ class ClsLoadDataPourViz:
         la_query = la_query + "WHERE pays_deces <> 'FRANCE' or "
         la_query = la_query + "pays_deces is null) hors_france"
         
-        print("ExtractionDataTableDeathPeopleView", flush=True) 
-        t = time.perf_counter()
         df_polars = self.select_with_polars(self.url_Bdd, la_query)
-        print(f"select_with_polars chargées en {time.perf_counter() - t:.2f} s",
-        flush=True) 
         df = df_polars.to_pandas()
-        print(f"df_polars chargées en {time.perf_counter() - t:.2f} s",
-        flush=True)  
-         
+
         # Vérification du Format :
         df_clean = self.nettoyage_region_departement_latitude(df)
 

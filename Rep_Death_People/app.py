@@ -16,10 +16,6 @@ st.set_page_config(
     page_title="Dynamiques territoriales",
 )
 
-#initialize_session()
-
-#apply_styles()
-
 # Le titre
 st.title("Trajectoires de vie : dynamiques et attractivités territoriales en 2024")
 st.header("Insights pour sociétés de service et politiques publiques")
