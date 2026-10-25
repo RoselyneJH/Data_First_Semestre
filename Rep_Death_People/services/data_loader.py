@@ -51,6 +51,26 @@ def load_dataframe()-> pd.DataFrame:
         choix_system="polars",
         mode=mode,
     )
+    # RJE 
+    from importlib.metadata import version, PackageNotFoundError
+
+    st.subheader("Diagnostic de l'environnement Cloud")
+
+    st.write("Version de Python :", __import__("sys").version)
+    st.write("Version de Polars :", pl.__version__)
+
+    # Affiche les dépendances utilisées pour la connexion SQL
+    for package in ["connectorx", "adbc-driver-postgresql", "pyarrow"]:
+        try:
+            st.write(f"{package} :", version(package))
+        except PackageNotFoundError:
+            st.write(f"{package} : non installé")
+
+    # Affiche aussi les dépendances optionnelles de Polars
+    with st.expander("Toutes les versions de Polars"):
+        pl.show_versions()
+        
+    # RJE 
 
     t = time.perf_counter()    
     diag("1 - Début du script")
