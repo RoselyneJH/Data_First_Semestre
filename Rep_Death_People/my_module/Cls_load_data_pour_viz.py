@@ -317,24 +317,38 @@ class ClsLoadDataPourViz:
         """
         print("select_with_polars URL      "+self.url_Bdd, flush=True)  
         print("select_with_polars la_query "+la_query, flush=True) 
+        import psycopg2
+        import streamlit as st
         try:
             # Il faut préparer la chaine de connexion pour ConnectorX
             #nouveau_conn_str = conn_str.replace("+psycopg", "")
             # propre_conn_str = nouveau_conn_str + "?sslmode=disable"
             # On gagne 4*fois plus de temps avec polars
             # df = pl.read_database_uri(la_query, propre_conn_str)
-            la_query_="SELECT 1 AS ok"
-            df = pl.read_database_uri(la_query_, self.url_Bdd)
-            print("apres read_database_uri  ", flush=True)
+            
+            conn = psycopg2.connect(uri, connect_timeout=10)
+            st.write(f"Connexion établie en {time.perf_counter() - t0:.2f} s")
+
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                st.write("Résultat SQL :", cur.fetchone())
+                df= cur.fetchone()
+            conn.close()
+            #la_query_="SELECT 1 AS ok"
+            #df = pl.read_database_uri(la_query_, self.url_Bdd)
+            #print("apres read_database_uri  ", flush=True)
+            
             return df
-
-        except pl.exceptions.PolarsError as e:
-            print("Erreur Polars détectée :", e)
-            print("Erreur Polars détectée :"+e, flush=True)
-
         except Exception as e:
-            print(" Erreur inattendue :", e)
-            print(" Erreur inattendue :"+e, flush=True)
+            st.error(f"{type(e).__name__}: {e}")
+    
+        #except pl.exceptions.PolarsError as e:
+        #    print("Erreur Polars détectée :", e)
+        #    print("Erreur Polars détectée :"+e, flush=True)
+
+        #except Exception as e:
+        #    print(" Erreur inattendue :", e)
+        #    print(" Erreur inattendue :"+e, flush=True)
 
         return None
 
