@@ -6,6 +6,7 @@
 #                                      IMPORT
 ## --------------------------------------------------------------------------##
 
+from turtle import st
 import pandas as pd
 
 from configparser import ConfigParser
@@ -317,8 +318,9 @@ class ClsLoadDataPourViz:
         """
         print("select_with_polars URL      "+self.url_Bdd, flush=True)  
         print("select_with_polars la_query "+la_query, flush=True) 
-        import psycopg2
+        import connectorx as cx
         import streamlit as st
+        st.write("Étape 1 : début du test ConnectorX")
         t0 = time.perf_counter()
         try:
             # Il faut préparer la chaine de connexion pour ConnectorX
@@ -327,21 +329,20 @@ class ClsLoadDataPourViz:
             # On gagne 4*fois plus de temps avec polars
             # df = pl.read_database_uri(la_query, propre_conn_str)
             
-            conn = psycopg2.connect(self.url_Bdd, connect_timeout=10)
             st.write(f"Connexion établie en {time.perf_counter() - t0:.2f} s")
 
-            with conn.cursor() as cur:
-                cur.execute("SELECT idligne, prenom,sex FROM death_people_view")
-                st.write("Résultat SQL :", cur.fetchone())
-                df= cur.fetchone()
-            conn.close()
+            df = cx.read_sql(self.url_Bdd, "SELECT idligne, prenom,sex FROM death_people_view")
+             
+            st.write("Étape 2 : ConnectorX a terminé")
+            st.write("Durée :", round(time.perf_counter() - t0, 2), "s")           
+             
             #la_query_="SELECT 1 AS ok"
             #df = pl.read_database_uri(la_query_, self.url_Bdd)
             #print("apres read_database_uri  ", flush=True)
             
             return df
         except Exception as e:
-                st.error(f"{type(e).__name__}: {e}")
+                st.exception(e)
     
         #except pl.exceptions.PolarsError as e:
         #    print("Erreur Polars détectée :", e)
