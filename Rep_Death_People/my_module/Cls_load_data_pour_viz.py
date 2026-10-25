@@ -323,7 +323,8 @@ class ClsLoadDataPourViz:
             # propre_conn_str = nouveau_conn_str + "?sslmode=disable"
             # On gagne 4*fois plus de temps avec polars
             # df = pl.read_database_uri(la_query, propre_conn_str)
-            df = pl.read_database_uri(la_query, self.url_Bdd)
+            la_query_="SELECT 1 AS ok"
+            df = pl.read_database_uri(la_query_, self.url_Bdd)
             print("apres read_database_uri  ", flush=True)
             return df
 
