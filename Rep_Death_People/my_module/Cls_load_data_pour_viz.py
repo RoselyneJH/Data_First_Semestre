@@ -319,6 +319,7 @@ class ClsLoadDataPourViz:
         print("select_with_polars la_query "+la_query, flush=True) 
         import psycopg2
         import streamlit as st
+        t0 = time.perf_counter()
         try:
             # Il faut préparer la chaine de connexion pour ConnectorX
             #nouveau_conn_str = conn_str.replace("+psycopg", "")
@@ -326,7 +327,7 @@ class ClsLoadDataPourViz:
             # On gagne 4*fois plus de temps avec polars
             # df = pl.read_database_uri(la_query, propre_conn_str)
             
-            conn = psycopg2.connect(uri, connect_timeout=10)
+            conn = psycopg2.connect(self.url_Bdd, connect_timeout=10)
             st.write(f"Connexion établie en {time.perf_counter() - t0:.2f} s")
 
             with conn.cursor() as cur:
@@ -340,7 +341,7 @@ class ClsLoadDataPourViz:
             
             return df
         except Exception as e:
-            st.error(f"{type(e).__name__}: {e}")
+                st.error(f"{type(e).__name__}: {e}")
     
         #except pl.exceptions.PolarsError as e:
         #    print("Erreur Polars détectée :", e)
