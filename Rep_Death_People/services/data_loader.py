@@ -55,12 +55,14 @@ def load_dataframe()-> pd.DataFrame:
     t = time.perf_counter()    
     diag("1 - Début du script")
     df_source,nb_total_selection = my_class.ExtractionDataTableDeathPeopleView()
-    print(f"ExtractionDataTableDeathPeopleView chargées en {time.perf_counter() - t:.2f} s")
+    print(f"ExtractionDataTableDeathPeopleView chargées en {time.perf_counter() - t:.2f} s",
+        flush=True)
 
     t = time.perf_counter()
     diag("2 - creation_classe_age terminé ")
     df = my_class.creation_classe_age(df_source)
-    print(f"creation_classe_age chargées en {time.perf_counter() - t:.2f} s")
+    print(f"creation_classe_age chargées en {time.perf_counter() - t:.2f} s",
+        flush=True)
 
     # Nombre de décès hors France
     nb_deces_hors_france = df["nb_hors_france"].mean() 

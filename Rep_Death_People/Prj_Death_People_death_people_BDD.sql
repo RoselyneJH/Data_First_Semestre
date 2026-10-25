@@ -1,5 +1,6 @@
 CREATE INDEX idx_idligne_death ON death_people(idligne DESC);
 CREATE INDEX idx_annee_death ON death_people(annee DESC);
+CREATE INDEX idx_pays_death ON death_people(pays_deces );
 
 ------------------------------------ affectation_insee_site_naissance_death
 DROP TABLE IF EXISTS affectation_insee_site_naissance_death CASCADE;

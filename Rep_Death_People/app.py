@@ -35,7 +35,6 @@ st.set_page_config(
     layout="wide",
 )
 
-st.write("🔄 Étape 1 : Le script démarre...")
 page_analyse = st.Page(
     "pages/1_📊_Analyse_territoriale.py",
     title="Analyse territoriale",

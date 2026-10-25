@@ -350,11 +350,14 @@ class ClsLoadDataPourViz:
         la_query = la_query + "WHERE pays_deces <> 'FRANCE' or "
         la_query = la_query + "pays_deces is null) hors_france"
         
+        print("ExtractionDataTableDeathPeopleView", flush=True) 
         t = time.perf_counter()
         df_polars = self.select_with_polars(self.url_Bdd, la_query)
-        print(f"select_with_polars chargées en {time.perf_counter() - t:.2f} s") 
+        print(f"select_with_polars chargées en {time.perf_counter() - t:.2f} s",
+        flush=True) 
         df = df_polars.to_pandas()
-        print(f"df_polars chargées en {time.perf_counter() - t:.2f} s")  
+        print(f"df_polars chargées en {time.perf_counter() - t:.2f} s",
+        flush=True)  
          
         # Vérification du Format :
         df_clean = self.nettoyage_region_departement_latitude(df)

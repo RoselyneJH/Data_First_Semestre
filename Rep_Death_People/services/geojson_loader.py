@@ -8,12 +8,15 @@ def load_geojsons():
 
     url_regions = (
     "https://raw.githubusercontent.com/"
-    "gregoiredavid/france-geojson/master/regions.geojson"
+    "gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson"
     )
+
+    # "https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions.geojson" # avant
+    # https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson
 
     url_departements = (
         "https://raw.githubusercontent.com/"
-        "gregoiredavid/france-geojson/master/departements.geojson"
+        "gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson"
     )
 
     response_regions = requests.get(url_regions, timeout=30)
