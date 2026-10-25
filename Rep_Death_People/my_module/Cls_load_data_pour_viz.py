@@ -329,7 +329,7 @@ class ClsLoadDataPourViz:
             # On gagne 4*fois plus de temps avec polars
             # df = pl.read_database_uri(la_query, propre_conn_str)
             
-            df = pl.read_database("SELECT idligne, prenom,sex FROM death_people_view", connection=conn)           
+            df = pl.read_database(la_query, connection=conn)           
             print(f"read_database en {time.perf_counter() - t0:.2f} s", flush=True)
             #la_query_="SELECT 1 AS ok"
             #df = pl.read_database_uri(la_query_, self.url_Bdd)
@@ -337,7 +337,7 @@ class ClsLoadDataPourViz:
             
             return df
         except Exception as e:
-                st.exception(e)
+                
                 print(f"erreur en {time.perf_counter() - t0:.2f} s", flush=True)
     
         #except pl.exceptions.PolarsError as e:
