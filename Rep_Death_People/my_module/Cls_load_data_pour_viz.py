@@ -331,7 +331,7 @@ class ClsLoadDataPourViz:
             st.write(f"Connexion établie en {time.perf_counter() - t0:.2f} s")
 
             with conn.cursor() as cur:
-                cur.execute("SELECT 1")
+                cur.execute("SELECT idligne, prenom,sex FROM death_people_view")
                 st.write("Résultat SQL :", cur.fetchone())
                 df= cur.fetchone()
             conn.close()
