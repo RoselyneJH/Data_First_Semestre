@@ -315,8 +315,8 @@ class ClsLoadDataPourViz:
         :param conn_str: La chaîne de connexion (ex: 'sqlite:///mydb.sqlite').
         :return: Un DataFrame Polars ou None si erreur.
         """
-         
-
+        print("select_with_polars URL      "+self.url_Bdd, flush=True)  
+        print("select_with_polars la_query "+la_query, flush=True) 
         try:
             # Il faut préparer la chaine de connexion pour ConnectorX
             #nouveau_conn_str = conn_str.replace("+psycopg", "")
@@ -324,13 +324,16 @@ class ClsLoadDataPourViz:
             # On gagne 4*fois plus de temps avec polars
             # df = pl.read_database_uri(la_query, propre_conn_str)
             df = pl.read_database_uri(la_query, self.url_Bdd)
+            print("apres read_database_uri  ", flush=True)
             return df
 
         except pl.exceptions.PolarsError as e:
             print("Erreur Polars détectée :", e)
+            print("Erreur Polars détectée :"+e, flush=True)
 
         except Exception as e:
             print(" Erreur inattendue :", e)
+            print(" Erreur inattendue :"+e, flush=True)
 
         return None
 
