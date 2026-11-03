@@ -45,8 +45,6 @@ pg = st.navigation(
 
 
 pg.run()
-
-
  
 # -------------------------------------------------------------------------------------
 st.write(":material/people: R.Jean - www.linkedin.com/in/roselyne-jean/ / :material/dataset_linked: www.insee.fr/fr/statistiques")

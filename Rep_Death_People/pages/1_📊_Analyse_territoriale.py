@@ -255,7 +255,7 @@ afficher_sidebar_pb(
 (tabMain,tabKpi, tabGraphAnalyse) = st.tabs(["🎯 Intro", "📍Vue globale", "🔍 Détail sectoriel"])
 
 # -----------------------------
-# TAB 1   Ou vont ses seniors ? Quels sont les territoires attractifs ?.<br>
+# TAB 1   Ou vont ses seniors ? 
 # -----------------------------
 with tabMain:
     with st.container(border=True):
@@ -267,7 +267,7 @@ with tabMain:
                 """
                 <div style="background-color: #ADD8E6; ">
                 🎯 Cette étude a pour objectif de comprendre la trajectoire de vie de nos défunts, d'identifier
-                 leur déplacment depuis leur lieu de naissance et d emort pour se poser cette question* : "Ou se cachent-ils pour mourrir" ?  <br>             
+                 leur déplacement depuis leur lieu de naissance et de mort pour se poser cette question : "Ou se cachent-ils pour mourir"* ?  <br>             
                 
                 Cette information est importante pour l'organisation et la gestion du territoire, la production de services des 
                 populations ciblées (protection sociale, attentes économiques, spécificités culturelles..).<br> 
