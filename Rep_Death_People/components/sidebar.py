@@ -139,7 +139,7 @@ def afficher_sidebar_ph(
             help="Déselectionner le département et/ou la région pour activer les boutons",
             captions=[
             "Tous ",
-            "Hom.",
+            "Male",
             "Fem.",
             ],
         ) 

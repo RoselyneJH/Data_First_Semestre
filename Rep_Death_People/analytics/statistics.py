@@ -166,12 +166,10 @@ def recherche_dominant_sur_secteur(
         distance_moy,
     )
 
-
+ 
 def statistique_sur_secteur(
-    df_fnl_e: pd.DataFrame,
-    ce_secteur: str,
-    cette_origine_secteur: str,
-) -> Tuple:
+    df_fnl_e: pd.DataFrame, ce_secteur: str, cette_origine_secteur: str
+    ) -> Tuple:
     """
     Produits des Kpis sur ce secteur
     Args :
@@ -182,19 +180,23 @@ def statistique_sur_secteur(
         Pourcentage d'originaire, Pourcentage d'exogène, Indicateur TAFV, Age Moy Origi,
         Age Moy exo, distance mediane par classe d'âge
     """
+    # Dictionnaire
+    stat_secteur = {}
+
     df_fnl_m = df_fnl_e.copy()
 
-    ordre = [
-        "0-1",
-        "1-20",
-        "20-35",
-        "35-50",
-        "50-65",
-        "65-90",
-        "90+",
-    ]
+    ordre= ["0-1", "1-20", "20-35", "35-50", "50-65", "65-90", "90+"]
 
-    les_proportions = (
+    # proportion des classes d'age
+    les_proportions_age_EXO = (
+        df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"]["classe_age"]
+        .value_counts(normalize=True)
+        .mul(100)
+        .round(3)
+        .reset_index(name="pourcentage")
+    )
+
+    les_proportions_age = (
         df_fnl_m["classe_age"]
         .value_counts(normalize=True)
         .mul(100)
@@ -202,111 +204,87 @@ def statistique_sur_secteur(
         .reset_index(name="pourcentage")
     )
 
-    les_proportions["classe_age"] = (
-        les_proportions["classe_age"]
-        .cat.reorder_categories(
-            ordre,
-            ordered=True,
-        )
+    # ordonne
+    les_proportions_age["classe_age"] = les_proportions_age["classe_age"].cat.reorder_categories(
+        ordre,
+        ordered=True
     )
 
-    les_proportions = les_proportions.sort_values(
-        "classe_age"
+    les_proportions_age = les_proportions_age.sort_values("classe_age")
+
+    # ordonne ATFV
+    les_proportions_age_EXO["classe_age"] = les_proportions_age_EXO["classe_age"].cat.reorder_categories(
+        ordre,
+        ordered=True
     )
 
-    nb_originaire = (
-        df_fnl_m[
-            df_fnl_m[cette_origine_secteur] == "O"
-        ][cette_origine_secteur]
-        .count()
-    )
+    les_proportions_age_EXO = les_proportions_age_EXO.sort_values("classe_age")
+    
+    # Preparation des indicateurs
+    nb_originaire = df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"][
+        cette_origine_secteur
+    ].count()
+    nb_exogene = df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"][
+        cette_origine_secteur
+    ].count()
 
-    nb_exogene = (
-        df_fnl_m[
-            df_fnl_m[cette_origine_secteur] == "N"
-        ][cette_origine_secteur]
-        .count()
-    )
+    # Pourcentage Originaire
+    pct_originaire = str(round(100 * nb_originaire / len(df_fnl_m), 2))
 
-    pct_originaire = str(
-        round(
-            100 * nb_originaire / len(df_fnl_m),
-            2,
-        )
-    )
+    # Pourcentage Exogène
+    pct_exogene = str(round(100 * nb_exogene / len(df_fnl_m), 2))
 
-    pct_exogene = str(
-        round(
-            100 * nb_exogene / len(df_fnl_m),
-            2,
-        )
-    )
+    # Indicateur TAFV
+    ind_TAFV = str(round(nb_originaire / (nb_originaire + nb_exogene), 1))
 
-    ind_tafv = str(
-        round(
-            nb_originaire
-            / (nb_originaire + nb_exogene),
-            1,
-        )
-    )
-
+    # Distance
     distance_med_originaire = (
         str(
-            df_fnl_m[
-                df_fnl_m[cette_origine_secteur] == "O"
-            ]["distance"].median()
-        ).replace(".0", "")
+            df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"]["distance"].median()
+        ).replace(".0", " ")
         + " Km"
     )
-
     distance_med_exogene = (
         str(
-            df_fnl_m[
-                df_fnl_m[cette_origine_secteur] == "N"
-            ]["distance"].median()
-        ).replace(".0", "")
+            df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"]["distance"].median()
+        ).replace(".0", " ")
         + " Km"
     )
 
+    # Age moyen Origi/ Exoge
     age_moy_originaire = str(
-        round(
-            df_fnl_m[
-                df_fnl_m[cette_origine_secteur] == "O"
-            ]["age"].mean(),
-            0,
-        )
+        round(df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"]["age"].mean(), 0)
     ).replace(".0", "")
-
     age_moy_exogene = str(
-        round(
-            df_fnl_m[
-                df_fnl_m[cette_origine_secteur] == "N"
-            ]["age"].mean(),
-            0,
-        )
+        round(df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"]["age"].mean(), 0)
     ).replace(".0", "")
 
-    df_fnl_m["distance_av_som"] = (
-        1 + df_fnl_m["distance"]
-    )
+    df_fnl_m["distance_av_som"] = 1 + df_fnl_m["distance"]
+    df_fnl_m.loc[:, "distance_lng"] = np.log(df_fnl_m["distance_av_som"])
+    distance_log_sum_prp = df_fnl_m["distance_lng"].mean() 
 
-    df_fnl_m["distance_lng"] = np.log(
-        df_fnl_m["distance_av_som"]
-    )
-
-    distance_log_sum_prp = (
-        df_fnl_m["distance_lng"].sum()
-        / len(df_fnl_m)
-    )
+    les_distances_sectorielles = pd.DataFrame({
+    "secteur": ["International","national", "regional", "departemental","ville"],
+    "distance_mean_lng": [round(df_fnl_m[(df_fnl_m['origine_nationale'] == "N") &
+                                        (df_fnl_m['origine_region'] == "N") &
+                                        (df_fnl_m['origine_departement'] == "N") &
+                                        (df_fnl_m['origine_ville'] == "N")]["distance_lng"].mean(),2),
+        round(df_fnl_m[df_fnl_m['origine_nationale'] == "O"]["distance_lng"].mean(),2),
+        round(df_fnl_m[df_fnl_m['origine_region'] == "O"]["distance_lng"].mean(),2),
+        round(df_fnl_m[df_fnl_m['origine_departement'] == "O"]["distance_lng"].mean(),2),
+        round(df_fnl_m[df_fnl_m['origine_ville'] == "O"]["distance_lng"].mean(),2)],
+    })  
 
     return (
         pct_originaire,
         pct_exogene,
-        ind_tafv,
+        ind_TAFV,
         distance_log_sum_prp,
         age_moy_originaire,
         age_moy_exogene,
         distance_med_originaire,
         distance_med_exogene,
-        les_proportions,
+        les_proportions_age,
+        les_proportions_age_EXO,
+        les_distances_sectorielles,
     )

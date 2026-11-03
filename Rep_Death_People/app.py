@@ -16,13 +16,10 @@ st.set_page_config(
     page_title="Dynamiques territoriales",
 )
 
-# Le titre
-st.title("Trajectoires de vie : dynamiques et attractivités territoriales en 2024")
+# Le titre :
+st.title("Trajectoires de vie en France")
 st.header("Insights pour sociétés de service et politiques publiques")
-#st.subheader("Trajectoires de vie des défunts en France en 2024")
-
-# -------------------------------------------------------------------------------------
-st.write("Auteur : R.Jean / Source : https://www.insee.fr/fr/statistiques")
+ 
 # -------------------------------------------------------------------------------------
 
 st.set_page_config(
@@ -46,4 +43,10 @@ pg = st.navigation(
     }
 )
 
+
 pg.run()
+
+
+ 
+# -------------------------------------------------------------------------------------
+st.write(":material/people: R.Jean - www.linkedin.com/in/roselyne-jean/ / :material/dataset_linked: www.insee.fr/fr/statistiques")

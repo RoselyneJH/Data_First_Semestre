@@ -104,7 +104,7 @@ class ClsGraphScore:
             if len(df_score_) > 0:
                 fig.add_scatter(
                     y=df_score_[self.nom_secteur],
-                    x=df_score_["TAFV"],
+                    x=df_score_["TAFV"]*100, #lecture plus facile en pourcentage
                     text=df_score_["rang_TAFV"] , # colonne à afficher
                     hoverinfo="text+x+y",  # ce qui apparaît
                     mode="markers",
@@ -127,7 +127,7 @@ class ClsGraphScore:
                     ),
                 )
 
-                x_fin = 0.80  #
+                x_fin = 80  #
                 fig.add_annotation(
                     x=x_fin,
                     y=-0.55,  # sur l’axe des abscisses
@@ -138,7 +138,7 @@ class ClsGraphScore:
                     font=dict(size=12, color="blue"),
                 )
 
-                x_deb = 0.15  #
+                x_deb = 15  #
                 fig.add_annotation(
                     x=x_deb,
                     y=-0.55,  # sur l’axe des abscisses
@@ -159,13 +159,13 @@ class ClsGraphScore:
                     font=dict(size=12, color="blue"),
                 )
 
-                fig.add_vline(x=0.5, line_dash="dash", line_color="white")
+                fig.add_vline(x=50, line_dash="dash", line_color="white")
 
                 fig.update_layout(
                     xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
                     title="Répartition du TAFV par zone géographique",
                     showlegend=False,  # desactive la legende pour les 2 add_scatter
-                    xaxis_title="TAFV",
+                    xaxis_title="TAFV (%)",
                     yaxis_title="Secteur",
                     plot_bgcolor="#ADD8E6",  # zone de tracé transparente (fond de la zone de tracé)
                     paper_bgcolor="#ADD8E6",  # fond autour du tracé transparent (fond du “papier” autour du tracé)
@@ -175,8 +175,9 @@ class ClsGraphScore:
                     ),  # permet d'avoir même hauteur de graphe
                     title_x=0.28,  # centre le titre du graphique
                 )
-                # afin de mieux voir les points pour lesquels nb originaire = 0  
-                fig.update_xaxes(range=[-0.05, 1]) 
+                # afin de mieux voir les points pour lesquels nb originaire = 0
+                #fig.update_xaxes(range=[-0.05, 1])
+                fig.update_xaxes(range=[-5, 100])
 
                 return fig, texte_sur_secteur_sans_deces_originaire, df_score
             else:
@@ -287,6 +288,7 @@ class ClsGraphScore:
         self,
         page: int = 0,
         indicateur: str = "IMD",
+        les_distances_sectorielles: pd.DataFrame = None,
     ) -> Tuple[go.Figure(), pd.DataFrame, str]:
         """
         Initialise le traitement du graph
@@ -294,12 +296,13 @@ class ClsGraphScore:
             Args:
                 page en lecture
                 choix de l'indicateur à visualiser : TAFV ou IMD
+                Dataframe comprenant les moyenne IMD par type sectoriel
 
             Return:
                 fig : une figure, graphe
                 df  : dataframe
         """
-        height_val = CST_HEIGHT_VAL # 580
+        height_val = CST_HEIGHT_VAL #  
         texte_sur_secteur_sans_deces_originaire = ""
         if indicateur == "IMD":
             le_titre = "Mobilité différentielle (IMD)"  #  
@@ -391,9 +394,34 @@ class ClsGraphScore:
                     text=self.class_filtrage.etat_global_de_ces_secteurs,
                     font=dict(size=12, color="blue"),
                 )
-
+                # je sépare le graphe
                 fig.add_vline(x=0, line_dash="dash", line_color="white")
-
+                le_libelle =['Moy. Inter.','Moy. Nat.','Moy. Rég.','Moy. Dép.']
+                # Je mets en place des repères afin de mieux comprendre le graphe IMD :
+                #les_distances_sectorielles
+                
+                for i in range(0,4):
+                     
+                    if df_score_[indicateur].min() < les_distances_sectorielles[indicateur][0] or (1 > les_distances_sectorielles[indicateur][i] and les_distances_sectorielles[indicateur][i]>0):
+                        fig.add_vline(x=les_distances_sectorielles[indicateur][i],
+                                    line_width=1,
+                                    line_dash="longdashdot", 
+                                    line_color="grey",
+                                    #annotation_text=le_libelle[i],
+                                    #annotation_position=la_position[i],
+                                    #annotation_textangle=90
+                                    )
+                        fig.add_annotation(
+                            x=les_distances_sectorielles[indicateur][i],
+                            y=0.5,
+                            xref="x",
+                            yref="paper",
+                            text=le_libelle[i],
+                            textangle=-90,
+                            showarrow=False,
+                            xshift=10
+                        )
+                        
                 fig.update_layout(
                     xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti
                     title=le_titre,  # "Mobilité différentielle (IMD)"

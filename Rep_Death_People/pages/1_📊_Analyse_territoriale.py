@@ -1,6 +1,5 @@
 from pathlib import Path
 
-#import plotly.express as px
 import streamlit as st
 import pandas as pd
 from typing import List, Dict, Union, Tuple
@@ -125,123 +124,7 @@ def secteur_selectionne(s_origine: str = CST_ORIGINE_VILLE):
 # FUNCTION 
 # ==========================
 
-@st.cache_data
-def statistique_sur_secteur(
-    df_fnl_e: pd.DataFrame, ce_secteur: str, cette_origine_secteur: str
-    ) -> Tuple:
-    """
-    Produits des Kpis sur ce secteur
-    Args :
-        nom du secteur à traiter
-        origine du secteur à traiter
-    Return :
-        Séries de kpi :
-        Pourcentage d'originaire, Pourcentage d'exogène, Indicateur TAFV, Age Moy Origi,
-        Age Moy exo, distance mediane par classe d'âge
-    """
-    # Dictionnaire
-    stat_secteur = {}
 
-    df_fnl_m = df_fnl_e.copy()
-
-    ordre= ["0-1", "1-20", "20-35", "35-50", "50-65", "65-90", "90+"]
-
-    # proportion des classes d'age
-    les_proportions_age_EXO = (
-        df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"]["classe_age"]
-        .value_counts(normalize=True)
-        .mul(100)
-        .round(3)
-        .reset_index(name="pourcentage")
-    )
-
-    les_proportions_age = (
-        df_fnl_m["classe_age"]
-        .value_counts(normalize=True)
-        .mul(100)
-        .round(3)
-        .reset_index(name="pourcentage")
-    )
-
-    # ordonne
-    les_proportions_age["classe_age"] = les_proportions_age["classe_age"].cat.reorder_categories(
-        ordre,
-        ordered=True
-    )
-
-    les_proportions_age = les_proportions_age.sort_values("classe_age")
-
-    # ordonne ATFV
-    les_proportions_age_EXO["classe_age"] = les_proportions_age_EXO["classe_age"].cat.reorder_categories(
-        ordre,
-        ordered=True
-    )
-
-    les_proportions_age_EXO = les_proportions_age_EXO.sort_values("classe_age")
-    
-    # Preparation des indicateurs
-    nb_originaire = df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"][
-        cette_origine_secteur
-    ].count()
-    nb_exogene = df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"][
-        cette_origine_secteur
-    ].count()
-
-    # Pourcentage Originaire
-    pct_originaire = str(round(100 * nb_originaire / len(df_fnl_m), 2))
-
-    # Pourcentage Exogène
-    pct_exogene = str(round(100 * nb_exogene / len(df_fnl_m), 2))
-
-    # Indicateur TAFV
-    ind_TAFV = str(round(nb_originaire / (nb_originaire + nb_exogene), 1))
-
-    # Distance
-    distance_med_originaire = (
-        str(
-            df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"]["distance"].median()
-        ).replace(".0", " ")
-        + " Km"
-    )
-    distance_med_exogene = (
-        str(
-            df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"]["distance"].median()
-        ).replace(".0", " ")
-        + " Km"
-    )
-
-    # Age moyen Origi/ Exoge
-    age_moy_originaire = str(
-        round(df_fnl_m[df_fnl_m[cette_origine_secteur] == "O"]["age"].mean(), 0)
-    ).replace(".0", "")
-    age_moy_exogene = str(
-        round(df_fnl_m[df_fnl_m[cette_origine_secteur] == "N"]["age"].mean(), 0)
-    ).replace(".0", "")
-
-    stat_secteur["pct_originaire"] = pct_originaire
-    stat_secteur["pct_exogene"] = pct_exogene
-    stat_secteur["ind_TAFV"] = ind_TAFV
-    stat_secteur["age_moy_originaire"] = age_moy_originaire
-    stat_secteur["age_moy_exogene"] = age_moy_exogene
-    stat_secteur["distance_med_originaire"] = distance_med_originaire
-    stat_secteur["distance_med_exogene"] = distance_med_exogene
-
-    df_fnl_m["distance_av_som"] = 1 + df_fnl_m["distance"]
-    df_fnl_m.loc[:, "distance_lng"] = np.log(df_fnl_m["distance_av_som"])
-    distance_log_sum_prp = df_fnl_m["distance_lng"].sum() / len(df_fnl_m)
-
-    return (
-        pct_originaire,
-        pct_exogene,
-        ind_TAFV,
-        distance_log_sum_prp,
-        age_moy_originaire,
-        age_moy_exogene,
-        distance_med_originaire,
-        distance_med_exogene,
-        les_proportions_age,
-        les_proportions_age_EXO,
-    )
 # ==========================
 # PGM  
 # ==========================
@@ -307,6 +190,7 @@ current_filters = (
     dis_med_e,
     les_proportions_age,
     les_proportions_EXO_age,
+    les_distances_sectorielles,
 ) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
 if current_filters != st.session_state.filters or "filters" not in st.session_state:
@@ -334,6 +218,7 @@ if current_filters != st.session_state.filters or "filters" not in st.session_st
             st.session_state.df_ecart_type_moy_age = le_df_ecart_type_moy_age
             st.proportion_nat_age = les_proportions_age.copy(True)
             st.proportion_EXO_nat_age = les_proportions_EXO_age.copy(True)
+            st.session_state.les_distances_sectorielles = les_distances_sectorielles
             st.session_state.genre = choix_genre
 
 # ==========================
@@ -370,19 +255,19 @@ afficher_sidebar_pb(
 (tabMain,tabKpi, tabGraphAnalyse) = st.tabs(["🎯 Intro", "📍Vue globale", "🔍 Détail sectoriel"])
 
 # -----------------------------
-# TAB 1
+# TAB 1   Ou vont ses seniors ? Quels sont les territoires attractifs ?.<br>
 # -----------------------------
 with tabMain:
     with st.container(border=True):
-        st.subheader("Objectifs et KPI :")
+        st.subheader("Dynamiques et attractivités territoriales en 2024 - Objectifs et Kpi :")
         col_obj,col_description_kpi = st.columns([5.4,4.2], vertical_alignment="top")
         with col_obj:
             with st.container(border=True):
                 st.markdown(
                 """
                 <div style="background-color: #ADD8E6; ">
-                🎯 L'objectif de cette présentation consiste à distinguer deux types de territoires : ceux qui gagnent des seniors (secteur attractif)
-                de ceux qui y restent pour leur vie (secteur d'ancrage).<br>
+                🎯 Cette étude a pour objectif de comprendre la trajectoire de vie de nos défunts, d'identifier
+                 leur déplacment depuis leur lieu de naissance et d emort pour se poser cette question* : "Ou se cachent-ils pour mourrir" ?  <br>             
                 
                 Cette information est importante pour l'organisation et la gestion du territoire, la production de services des 
                 populations ciblées (protection sociale, attentes économiques, spécificités culturelles..).<br> 
@@ -427,9 +312,9 @@ with tabMain:
                             padding:12px;
                             border-radius:8px;
                             border-left:4px solid #1f77b4; ">
-                            <b>-</b> TAFV < 0.5 le secteur est très attractif en fin de vie pour les exogènes. Cela peut 
+                            <b>-</b> TAFV < 50% le secteur est très attractif en fin de vie pour les exogènes. Cela peut 
                             refléter la présence d'hôpitaux, d'EHPAD ou de zones de retraite résidentielle.<br>
-                            <b>-</b> TAFV > 0.5 les décès sont majoritairement locaux (fort ancrage territorial).
+                            <b>-</b> TAFV > 50% les décès sont majoritairement locaux (fort ancrage territorial).
                             Cela correspond à une faible mobilité residentielle soulignant une forte identité culturelle.<br>
                         </div>              
                         """,
@@ -563,6 +448,11 @@ with tabKpi:
             2,
         )
         #
+        st.session_state.les_distances_sectorielles['IMD']=round( (st.session_state.moyenne_nationale.loc[0] - 
+            st.session_state.les_distances_sectorielles['distance_mean_lng'])
+            / st.session_state.ecart_type_national.loc[0],2)
+         
+
         st.caption("Distance med.* = Distance médiane ")
 
         ce_graph_proportion_age = graph_score_age(df_fnl_m, nom_secteur, origine_secteur)
@@ -622,10 +512,11 @@ with tabGraphAnalyse:
         st.session_state.ecart_type_national.loc[0],
         st.session_state.moyenne_nationale.loc[0], #  
     )
-
+    #st.session_state.les_distances_sectorielles
     fig_score_IMD, message_score_, df_score_IMD = (
         ce_graph_IMD.render_graph_score_IMD(
             page=st.session_state.page,
+            les_distances_sectorielles=st.session_state.les_distances_sectorielles
         )
     )
 
