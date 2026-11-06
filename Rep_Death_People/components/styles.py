@@ -50,10 +50,91 @@ def apply_styles():
             .stSlider * {
                 color: #00090f !important;
         }
-        /* Taille des icone dite Material*/
+        
+        /* ============================================================
+            MATERIAL SYMBOLS - STREAMLIT 1.53.0
+            Gestion des tailles par composant
+        ============================================================ */
+
+        /* 1. TITRES */
+
+        /* st.title */
+        h1 span[style*="Material Symbols Rounded"] {
+            font-size: 1.10em !important;
+            vertical-align: -0.12em !important;
+        }
+
+        /* st.header */
+        h2 span[style*="Material Symbols Rounded"] {
+            font-size: 1.35em !important;
+            vertical-align: -0.15em !important;
+        }
+
+        /* st.subheader */
+        h3 span[style*="Material Symbols Rounded"] {
+            font-size: 1em !important;
+            vertical-align: -0.12em !important;
+        }
+
+
+        /* 2. TEXTE COURANT */
+
+        /* st.write, st.markdown */
+        [data-testid="stMarkdownContainer"] 
         span[style*="Material Symbols Rounded"] {
-            font-size: 26px !important;  
-            vertical-align: -0.25em !important;             
+            font-size: 1em !important;
+            vertical-align: -0.15em !important;
+        }
+
+
+        /* 3. RADIO BUTTONS */
+
+        /* Radio : icône du libellé principal */
+        .stRadio [data-testid="stWidgetLabel"] span[style*="Material Symbols Rounded"] {
+            font-size: 1.15em !important;
+            vertical-align: -0.15em !important;
+        }
+
+       
+
+        /* Icônes dans les options des boutons radio */
+        .stRadio label span[style*="Material Symbols Rounded"] {
+            font-size: 1.35em !important;
+            vertical-align: -0.18em !important;
+        }
+
+        /* 4. SLIDER */
+
+        /* Slider : icône du libellé */
+        .stSlider [data-testid="stWidgetLabel"] span[style*="Material Symbols Rounded"] {
+            font-size: 1.15em !important;
+            vertical-align: -0.15em !important;
+        }
+
+
+        /* 5. SELECTBOX */
+
+        /* Selectbox : icône du libellé */
+        .stSelectbox [data-testid="stWidgetLabel"] span[style*="Material Symbols Rounded"] {
+            font-size: 1.35em !important;
+            vertical-align: -0.15em !important;
+        }
+
+        /* Icônes dans la valeur sélectionnée */
+        .stSelectbox [data-baseweb="select"]
+        span[style*="Material Symbols Rounded"] {
+            font-size: 0.95em !important;
+            vertical-align: -0.12em !important;
+        }
+
+
+        /* 6. CAPTION */
+
+        /* st.caption */
+        [data-testid="stCaptionContainer"]
+        span[style*="Material Symbols Rounded"] {
+            font-size: 0.95em !important;
+            vertical-align: -0.12em !important;
         }
 
         </style>

@@ -254,8 +254,6 @@ class ClsGraphScore:
                     ),  # permet d'avoir même hauteur de graphe
                     title_x=0.2,  # centre le titre du graphique
                 )
-                        
-                #fig.update_xaxes(range=[-1.2, 1.2], secondary_y=False) 
 
                 return fig, texte_sur_secteur_sans_deces_originaire, self.df_score
 
@@ -396,31 +394,28 @@ class ClsGraphScore:
                 )
                 # je sépare le graphe
                 fig.add_vline(x=0, line_dash="dash", line_color="white")
-                le_libelle =['Moy. Inter.','Moy. Nat.','Moy. Rég.','Moy. Dép.']
-                # Je mets en place des repères afin de mieux comprendre le graphe IMD :
-                #les_distances_sectorielles
                 
-                for i in range(0,4):
-                     
-                    if df_score_[indicateur].min() < les_distances_sectorielles[indicateur][0] or (1 > les_distances_sectorielles[indicateur][i] and les_distances_sectorielles[indicateur][i]>0):
-                        fig.add_vline(x=les_distances_sectorielles[indicateur][i],
-                                    line_width=1,
-                                    line_dash="longdashdot", 
-                                    line_color="grey",
-                                    #annotation_text=le_libelle[i],
-                                    #annotation_position=la_position[i],
-                                    #annotation_textangle=90
-                                    )
-                        fig.add_annotation(
-                            x=les_distances_sectorielles[indicateur][i],
-                            y=0.5,
-                            xref="x",
-                            yref="paper",
-                            text=le_libelle[i],
-                            textangle=-90,
-                            showarrow=False,
-                            xshift=10
-                        )
+                if not les_distances_sectorielles is None:
+                    le_libelle =['Inter.','Nat.','Rég.','Dép.']
+                    # Je mets en place des repères afin de mieux comprendre le graphe IMD :                
+                    for i in range(0,4):
+                        # Annotation pour identifier les zones IMD relatives à la nation, la region, le département. 
+                        if df_score_[indicateur].min() < les_distances_sectorielles[indicateur][0] or (1 > les_distances_sectorielles[indicateur][i] and les_distances_sectorielles[indicateur][i]>0):
+                            fig.add_vline(x=les_distances_sectorielles[indicateur][i],
+                                        line_width=1,
+                                        line_dash="longdashdot", 
+                                        line_color="grey",
+                                        )
+                            fig.add_annotation(
+                                x=les_distances_sectorielles[indicateur][i],
+                                y=0.89,#0.5,
+                                xref="x",
+                                yref="paper",
+                                text=le_libelle[i],
+                                textangle=0,
+                                showarrow=False,
+                                xshift=10
+                            )
                         
                 fig.update_layout(
                     xaxis=dict(rangemode="tozero"),  # 0 est maintenant garanti

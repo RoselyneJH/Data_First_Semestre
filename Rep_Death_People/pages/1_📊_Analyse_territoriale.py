@@ -194,10 +194,10 @@ current_filters = (
 ) = statistique_sur_secteur(df_fnl_m, nom_secteur, origine_secteur)
 
 if current_filters != st.session_state.filters or "filters" not in st.session_state:
-
     st.session_state.filters = current_filters
-
-    st.session_state.page = 0
+    if current_filters != st.session_state.filters:
+        
+        st.session_state.page = 0  # reset pagination
 
     # Ici tu refais les calculs nécessaires
     if (
@@ -512,7 +512,7 @@ with tabGraphAnalyse:
         st.session_state.ecart_type_national.loc[0],
         st.session_state.moyenne_nationale.loc[0], #  
     )
-    #st.session_state.les_distances_sectorielles
+    #
     fig_score_IMD, message_score_, df_score_IMD = (
         ce_graph_IMD.render_graph_score_IMD(
             page=st.session_state.page,

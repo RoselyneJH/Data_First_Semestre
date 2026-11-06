@@ -18,3 +18,7 @@ def initialize_session():
 
         if key not in st.session_state:
             st.session_state[key] = value
+
+    # --- Etat de pagination ---rose
+    if "page" not in st.session_state:
+        st.session_state.page = 0

@@ -17,7 +17,8 @@ st.set_page_config(
 )
 
 # Le titre :
-st.title("Trajectoires de vie en France")
+st.title(":material/travel_explore: Trajectoires de vie en France")
+
 st.header("Insights pour sociétés de service et politiques publiques")
  
 # -------------------------------------------------------------------------------------

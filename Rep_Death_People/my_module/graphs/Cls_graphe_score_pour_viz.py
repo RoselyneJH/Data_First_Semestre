@@ -281,7 +281,7 @@ class ClsScorePourViz:
             self.df_cumul_secteur[self.nb_origine] == 0
         ].shape[0]
 
-        return df_cumul_secteur, "deces"  # nb_non_origine
+        return df_cumul_secteur, "deces"  # 
 
     def identification_top_treemap(
         self, df: pd.DataFrame, la_ville: str, top_n: int = 5
